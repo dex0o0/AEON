@@ -6,7 +6,6 @@ version = 4
 name = "AEON"
 version = "0.1.0"
 dependencies = [
- "cc",
  "chrono",
  "libc",
  "notify-rust",
