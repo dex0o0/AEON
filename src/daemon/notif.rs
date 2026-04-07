@@ -1,16 +1,12 @@
 use notify_rust::Notification;
 
-
-pub struct Notif{
-    head:String,
-    body:String,
-}
+pub struct Notif;
 
 impl Notif{
-    pub fn send(self)-> std::io::Result<()>{
+   pub fn send(head:&'static str,body:String)-> std::io::Result<()>{
         let _ = Notification::new()
-            .summary(&self.head)
-            .body(&self.body)
+            .summary(head)
+            .body(&body)
             .appname("dex")
             .show();
         Ok(())
