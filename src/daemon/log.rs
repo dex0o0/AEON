@@ -10,11 +10,10 @@ impl Log {
    pub fn save_log(head:&'static str , body:String)-> std::io::Result<()>{
         let homedir = env::home_dir().unwrap_or_else(||{
             eprintln!("Error");
-            let _ = senderror("ERROR_from");
+            let _ = senderror("ERROR_from get home dire");
             PathBuf::from("/tmp/")
         });
-        let time:DateTime<Local> = Local::now(); 
-        let path_log = format!("{}/.log/dex_daemon/{}-{}.log",homedir.display(),head,time.date_naive());
+        let path_log = format!("{}/.log/dex_daemon/{}.log",homedir.display(),head);
         let pathlog = PathBuf::from(path_log.clone());
         let dirlog = format!("{}/.log/dex_daemon/",homedir.display());
         if !PathBuf::from(&dirlog).exists(){
@@ -35,7 +34,10 @@ pub fn senderror(noties:&'static str)-> std::io::Result<()>{
             .create(true)
             .append(true)
             .open("/tmp/ERROR-dex.log")?;
-    let _ =writeln!(logerror,"{}",noties);
+
+    let time:DateTime<Local>=Local::now();
+    let massage = format!("{}: {}",time,noties);
+    let _ =writeln!(logerror,"{}",massage);
     Ok(())
 }
 
