@@ -10,7 +10,7 @@ impl Log {
    pub fn save_log(head:&'static str , body:String)-> std::io::Result<()>{
         let homedir = env::home_dir().unwrap_or_else(||{
             eprintln!("Error");
-            let _ = senderror("ERROR_from get home dire");
+            let _ = senderror("ERROR_from get home dir");
             PathBuf::from("/tmp/")
         });
         let path_log = format!("{}/.log/dex_daemon/{}.log",homedir.display(),head);
