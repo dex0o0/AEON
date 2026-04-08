@@ -24,9 +24,17 @@ pub async fn moncpu(){
     let mut sys = System::new_all();
     sys.refresh_cpu_usage();
     if sys.global_cpu_usage() > (100.0 * 0.8){
-        let _ = Log::save_log("cpu usage", format!("usage:{}",sys.global_cpu_usage()));
+        let _ = Log::save_log("System", format!("cpu usage:{}",sys.global_cpu_usage()));
         let massage = format!("CPU very high:{}%",sys.global_cpu_usage());
         let _ = Notif::send("CPU", massage);
     }
+}
+pub async fn gpu(){
+    let sys = System::new_all();
+    if sys.global_cpu_usage() > (100.0 * 0.8){
+        let _ = Log::save_log("System", format!("gpu usage:{}",sys.global_cpu_usage()));
+        let massage = format!("GPU Usage:{}",sys.global_cpu_usage());
+        let _ = Notif::send("AEON", massage);
+    }
 
-} 
+}

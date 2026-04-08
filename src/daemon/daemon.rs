@@ -15,6 +15,7 @@ pub fn check_swap(){
 }
 pub async fn check_cpu(){
     monitoring::moncpu().await;
+    monitoring::gpu().await;
 }
 pub async fn check_net()-> io::Result<()>{
     let ping = Command::new("ping")
