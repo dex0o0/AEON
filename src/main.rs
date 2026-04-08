@@ -44,7 +44,7 @@ async fn run() -> io::Result<()>{
    });
    let _net_handle=tokio::spawn(async {
        loop{
-            check_net().await;
+            let _ = check_net().await;
             thread::sleep(Duration::from_secs(60));
        }
    });

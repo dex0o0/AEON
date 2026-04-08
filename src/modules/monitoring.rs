@@ -1,5 +1,5 @@
-use crate::daemon::{log::{self, Log}, notif::{self, Notif}};
-use sysinfo::{Cpu, System};
+use crate::daemon::{log::Log, notif::Notif};
+use sysinfo::System;
 
 
 
@@ -7,9 +7,12 @@ use sysinfo::{Cpu, System};
 pub fn monswap(){
     let mut sys = System::new_all();
     sys.refresh_all();
-
+    
     let swap = sysinfo::System::free_swap(&sys);
     let total = sysinfo::System::total_swap(&sys);
+    if total == 0{
+        return;
+    }
     if (total - swap) as f32 >= total as f32 * 0.8 {
         let massage = "your use of partition swap is high\nplease check".to_string();
         let _ =Notif::send("AEON", massage);
