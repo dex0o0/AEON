@@ -10,8 +10,6 @@ use daemon::daemon::*;
 use std::{io, u64};
 use std::thread;
 use std::time::Duration;
-
-use crate::daemon::log::Log;
 use crate::modules::monitoring;
 
 const FILE_CONF:&str="/tmp/data.json";
