@@ -20,10 +20,10 @@ pub fn monswap(){
 
     
 } 
-pub async fn moncpu(){
+pub async fn moncpu(value:f32){
     let mut sys = System::new_all();
     sys.refresh_cpu_usage();
-    if sys.global_cpu_usage() > 80.0{
+    if sys.global_cpu_usage() > value{
         let _ = Log::save_log("System", format!("cpu usage:{}",sys.global_cpu_usage()));
         let massage = format!("CPU very high:{}%",sys.global_cpu_usage());
         let _ = Notif::send("CPU", massage);

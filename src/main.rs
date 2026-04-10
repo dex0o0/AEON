@@ -7,28 +7,52 @@ mod modules{
     pub mod monitoring;
 }
 use daemon::daemon::*;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::{io, u64};
 use std::thread;
+use std::fs;
+use serde_json;
+use serde::{Serialize,Deserialize};
 use std::time::Duration;
 use crate::modules::monitoring;
 
 const FILE_CONF:&str="/tmp/data.json";
+const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
 
-#[tokio::main]
+#[derive(Deserialize,Serialize,Debug)]
+pub struct DataConf{
+    cputsh:Option<f32>,
+}
+
+fn read_data(path:&PathBuf)-> Option<DataConf>{
+   let data = fs::read_to_string(path).expect("ERRORS");
+   if let Ok(json) = serde_json::from_slice(data.as_bytes()){
+       Some(json)
+   }else {
+       None
+   }
+   
+}
+
+#[tokio::main]  
 async fn main() -> io::Result<()> {
     run().await
 }
 
 async fn run() -> io::Result<()>{
     println!("Daemon started...");
-   let _cpu_swap = tokio::spawn(async {
-       loop{
+    let path = PathBuf::from_str(FILE_DATA_PATH).expect("Error");
+    let conf = read_data(&path).expect("Error");
+    let cputsh = conf.cputsh.unwrap_or(80.0);
+    let _cpu_swap = tokio::spawn(async move{
+        loop{
            monitoring::monswap();
-           monitoring::moncpu().await;
+           monitoring::moncpu(cputsh).await;
            monitoring::gpu().await;
            thread::sleep(Duration::from_secs(1));
-       }
-   });
+        }
+    });
    // let _conf = tokio::spawn(async{
    //      loop {
    //          let path = PathBuf::from_str(FILE_CONF).expect("Error");

@@ -34,6 +34,7 @@ enum Command{
 
 #[derive(Subcommand,Deserialize,Serialize)]
 enum Config{
+
     Cputsh{
         #[arg(help="")]
         value:u8,
@@ -47,7 +48,7 @@ enum Config{
 
 #[derive(Deserialize,Serialize,Debug)]
 pub struct DataConf{
-    cputsh:Option<u8>,
+    cputsh:Option<f32>,
 }
 
 fn get_data(){
@@ -65,7 +66,7 @@ fn create_dir_conf(path:&PathBuf){
     }
 }
 
-fn read_data(path:&PathBuf)-> Option<Config>{
+fn read_data(path:&PathBuf)-> Option<DataConf>{
    let data = fs::read_to_string(path).expect("ERRORS");
    if let Ok(json) = serde_json::from_slice(data.as_bytes()){
        Some(json)
@@ -85,18 +86,15 @@ async fn save_conf(data:DataConf){
 
 #[tokio::main]
 async fn main()->io::Result<()>{
-    let conf = DataConf{
-        cputsh:Some(32),
-    };
+
     create_dir_conf(&PathBuf::from_str(FILE_DATA_PATH).expect("Error"));
-    save_conf(conf).await;
     let cli = Cli::parse();
     match cli.command{
         Command::Srv{action}=>{
             match action {
                 Config::Cputsh{value}=>{
                     let conf = DataConf{
-                        cputsh:Some(value)
+                        cputsh:Some(value as f32)
                     };
                     save_conf(conf).await;
                 },
