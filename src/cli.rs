@@ -3,16 +3,15 @@ mod daemon{
     pub mod notif;
     pub mod log;
 }
-use clap::{Parser,Subcommand};
-
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{Shell,generate};
 use std::{fs, io::{self, Write}, path::{PathBuf}, str::FromStr,process::Command as bash};
 use serde::{Serialize,Deserialize};
 use crate::daemon::log::Log;
 
-//consts
+//consts values
 const CONF_DIR:&str="/tmp/AEON/system";
 const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
-//
 
 //cli conf
 #[derive(Parser)]
@@ -25,26 +24,33 @@ struct Cli{
 
 #[derive(Subcommand)]
 enum Command{
-
+    #[command(about="controle service")]
     Srv{
         #[command(subcommand)]
         action:Config,
     },
+    #[command(about="config auto sugestiones")]
+    Complation{
+        shell:Shell,
+    }
 }
 
 #[derive(Subcommand,Deserialize,Serialize)]
 enum Config{
-
+    #[command(about="set cputreshold for sed notification")]
     Cputsh{
-        #[arg(help="")]
+        #[arg(help="set zone for send notif (CPUtreshold)")]
         value:u8,
     },
+    #[command(about="show status service")]
     Status,
+    #[command(about="restarted service")]
     Restart,
+    #[command(about="started service")]
     Start,
+    #[command(about="stoped service")]
     Stop,
 }
-//
 
 #[derive(Deserialize,Serialize,Debug)]
 pub struct DataConf{
@@ -86,8 +92,7 @@ async fn save_conf(data:DataConf){
 
 #[tokio::main]
 async fn main()->io::Result<()>{
-
-    create_dir_conf(&PathBuf::from_str(FILE_DATA_PATH).expect("Error"));
+     create_dir_conf(&PathBuf::from_str(FILE_DATA_PATH).expect("Error"));
     let cli = Cli::parse();
     match cli.command{
         Command::Srv{action}=>{
@@ -130,6 +135,11 @@ async fn main()->io::Result<()>{
 
             }
         },
+        Command::Complation { shell }=>{
+            let mut cmd = Cli::command();
+            let name = cmd.get_name().to_string();
+            generate(shell, &mut cmd, name, &mut std::io::stdout());
+        }
     }
    Ok(()) 
 }
