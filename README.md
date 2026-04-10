@@ -74,7 +74,7 @@ bash
 ```bash
 git push origin your-branch-name
 ```
-Submit a Merge Request (MR):
+**Submit a Merge Request (MR)**:
 
 Go to the AEON GitLab repository page.
 You should see an option to create a Merge Request from your recently pushed branch.
