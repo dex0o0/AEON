@@ -1,5 +1,6 @@
 #!/bin/bash
 
+ROOT_DIR=/usr/bin/
 DIR_RELEASE=$(pwd)/target/release
 ROOT_BINARY=/usr/bin/AEON
 CLI_BINARY=$DIR_RELEASE/aeoncli
@@ -46,7 +47,7 @@ groupConf(){
 }
 config_cli(){
   if [[ -f $CLI_BINARY ]];then
-    echo "moving $CLI_BINARY to $ROOT_BINARY" && sudo mv $CLI_BINARY $ROOT_BINARY || error_exit "can't move $CLI_BINARY to $ROOT_BINARY"
+    echo "moving $CLI_BINARY to $ROOT_DIR" && sudo mv $CLI_BINARY $ROOT_DIR || error_exit "can't move $CLI_BINARY to $ROOT_DIR"
   fi
 }
 confing_aeon(){
