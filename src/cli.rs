@@ -12,10 +12,9 @@ use crate::daemon::log::Log;
 //consts
 const CONF_DIR:&str="/tmp/AEON/system";
 const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
-
+//
 
 //cli conf
-
 #[derive(Parser)]
 #[command(name = "aeoncli")]
 #[command(version = "0.1.0")]
@@ -35,7 +34,10 @@ enum Command{
 
 #[derive(Subcommand,Deserialize,Serialize)]
 enum Config{
-    Cputsh,
+    Cputsh{
+        #[arg(help="")]
+        value:u8,
+    },
     Status,
     Restart,
     Start,
@@ -44,7 +46,7 @@ enum Config{
 //
 
 #[derive(Deserialize,Serialize,Debug)]
-struct DataConf{
+pub struct DataConf{
     cputsh:Option<u8>,
 }
 
@@ -92,7 +94,11 @@ async fn main()->io::Result<()>{
     match cli.command{
         Command::Srv{action}=>{
             match action {
-                Config::Cputsh=>{
+                Config::Cputsh{value}=>{
+                    let conf = DataConf{
+                        cputsh:Some(value)
+                    };
+                    save_conf(conf).await;
                 },
                 Config::Status=>{
                     let out = bash::new("systemctl")

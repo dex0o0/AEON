@@ -1,8 +1,10 @@
 #!/bin/bash
 
+DIR_RELEASE=$(pwd)/target/release
 ROOT_BINARY=/usr/bin/AEON
+CLI_BINARY=$DIR_RELEASE/aeoncli
 APP_NAME="AEON"
-BINARY_PATH=$(pwd)/target/release/$APP_NAME
+BINARY_PATH=$DIR_RELEASE/$APP_NAME
 SERVICE_DIR=/etc/systemd/system
 GROUP="aeon"
 SERVICE_PATH=$SERVICE_DIR/AEON.service
@@ -42,7 +44,11 @@ groupConf(){
     echo "adding user to group $GROUP" && sudo usermod -a $USER -G $GROUP || error_exit "Failde to add user:$USER to group:$GROUP"
   fi
 }
-
+config_cli(){
+  if [[ -f $CLI_BINARY ]];then
+    echo "moving $CLI_BINARY to $ROOT_BINARY" && sudo mv $CLI_BINARY $ROOT_BINARY || error_exit "can't move $CLI_BINARY to $ROOT_BINARY"
+  fi
+}
 confing_aeon(){
   echo "configing service..."
   echo "$SERVIC_CONF"|sudo tee "$SERVICE_PATH">/dev/null || error_exit "Failed to config $SERVICE_PATH"
@@ -68,8 +74,9 @@ if which cargo >/dev/null;then
   if cargo build --release &>/dev/null;then
     echo "build success.."
     if [ -f $BINARY_PATH ];then
-      echo "moving file to $ROOT_BINARY" && sudo mv $BINARY_PATH $ROOT_BINARY
+      echo "moving file $BINARY_PATH to $ROOT_BINARY" && sudo mv $BINARY_PATH $ROOT_BINARY
     fi
+    config_cli 
     echo "creating AEON.service"
     if ! [ -d $SERVICE_DIR ]; then
       echo "make $SERVICE_DIR" && mkdir -p $SERVICE_DIR
