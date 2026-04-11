@@ -45,14 +45,16 @@ pub async fn check_disk(){
         let free_space = disk.available_space();
         let use_space = total - free_space;
         let zone90 = total as f32 * 0.9;
+        let montpoint = disk.mount_point().display();
         if use_space as f32 >= zone90{
             let masssage = format!("storage space filling\n\
                 disk\ttotal\tusage\tfree\n\
-                {}\t{:.2}\t{:.2}\t{:.2}",
+                {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
                 disk.name().to_string_lossy(),
                 (total as f32 / 1024.0/1024.0/1024.0),
                 (use_space as f32 /1024.0/1024.0/1024.0),
-                (free_space as f32 /1024.0/1024.0/1024.0));
+                (free_space as f32 /1024.0/1024.0/1024.0),
+                montpoint);
             let _ = Log::save_log("disk", masssage);
             let _ = Notif::send("DISK", format!("disk:{},is filling please check",disk.name().to_string_lossy()));
         }
