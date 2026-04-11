@@ -51,9 +51,6 @@ enum Command{
         exclude:Vec<String>,
         
         #[arg(short,long)]
-        include:Vec<String>,
-        
-        #[arg(short,long)]
         verbose:bool,
     },
 
@@ -179,7 +176,7 @@ async fn main()->io::Result<()>{
             let name = cmd.get_name().to_string();
             generate(shell, &mut cmd, name, &mut std::io::stdout());
         },
-        Command::Backup { path, output, compress, level, exclude, include, verbose }=>{
+        Command::Backup { path, output, compress, level, exclude, verbose }=>{
 
             let compression = match compress {
                 Compression::Gzip => modules::backup::CompressionType::Gzip,
