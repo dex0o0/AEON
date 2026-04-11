@@ -2,7 +2,6 @@ use std::fs::{File, create_dir_all};
 use std::path::PathBuf;
 use std::path::Path;
 use tar::Builder;
-use flate2::Compression;
 use flate2::write::GzEncoder;
 use chrono::Local;
 use walkdir::WalkDir;
