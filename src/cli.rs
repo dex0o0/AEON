@@ -3,7 +3,11 @@ mod daemon{
     pub mod notif;
     pub mod log;
 }
-use clap::{CommandFactory, Parser, Subcommand};
+mod modules{
+    pub mod backup;
+    
+}
+use clap::{CommandFactory, Parser, Subcommand,ValueEnum};
 use clap_complete::{Shell,generate};
 use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash, str::FromStr};
 use serde::{Serialize,Deserialize};
@@ -16,7 +20,7 @@ const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
 //cli conf
 #[derive(Parser)]
 #[command(name = "aeoncli")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1.24")]
 struct Cli{
     #[command(subcommand)]
     command:Command,
@@ -29,14 +33,46 @@ enum Command{
         #[command(subcommand)]
         action:Config,
     },
+    #[command(short_flag='b',about="Backup files and directories")]
+    Backup{
+        #[arg(short,long)]
+        path:PathBuf,
+
+        #[arg(short,long)]
+        output:Option<PathBuf>,
+        
+        #[arg(short,long,default_value = "gzip")]
+        compress:Compression,
+        
+        #[arg(short,long,default_value_t = 6)]
+        level:u8,
+        
+        #[arg(short,long)]
+        exclude:Vec<String>,
+        
+        #[arg(short,long)]
+        include:Vec<String>,
+        
+        #[arg(short,long)]
+        verbose:bool,
+    },
+
     #[command(about="config auto sugestiones")]
     Complation{
         shell:Shell,
     }
 }
 
+#[derive(ValueEnum,Clone,Debug)]
+pub enum Compression{
+    Gzip,
+    Bzip2,
+    Xz,
+    None,
+}
+
 #[derive(Subcommand,Deserialize,Serialize)]
-enum Config{
+pub enum Config{
     #[command(about="set cputreshold for sed notification")]
     Cputsh{
         #[arg(help="set zone for send notif (CPUtreshold)")]
@@ -142,6 +178,47 @@ async fn main()->io::Result<()>{
             let mut cmd = Cli::command();
             let name = cmd.get_name().to_string();
             generate(shell, &mut cmd, name, &mut std::io::stdout());
+        },
+        Command::Backup { path, output, compress, level, exclude, include, verbose }=>{
+
+            let compression = match compress {
+                Compression::Gzip => modules::backup::CompressionType::Gzip,
+                Compression::Bzip2 => modules::backup::CompressionType::Bzip2,
+                Compression::Xz => modules::backup::CompressionType::Xz,
+                Compression::None => modules::backup::CompressionType::None,
+            };
+            
+            // Determine output directory
+            let output_dir = output.unwrap_or_else(|| {
+                std::env::current_dir().expect("Failed to get current directory")
+            });
+            
+            // Create config
+            let config = modules::backup::BackupConfig {
+                source_path: path,
+                output_dir,
+                compression,
+                compression_level: level,
+                exclude_patterns: exclude,
+            };
+            
+            // Run backup
+            if verbose {
+                println!("Starting backup...");
+                println!("Source: {}", config.source_path.display());
+                println!("Output: {}", config.output_dir.display());
+                println!("Compression: {:?}", config.compression);
+            }
+            
+            match modules::backup::create_backup(config) {
+                Ok(_) => {
+                    println!("Backup completed successfully!");
+                },
+                Err(e) => {
+                    eprintln!("Backup failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
     }
    Ok(()) 

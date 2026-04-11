@@ -5,13 +5,13 @@ mod daemon{
 }
 mod modules{
     pub mod monitoring;
+    pub mod backup;
 }
 use daemon::daemon::*;
 use std::path::PathBuf;
 use std::{env, io, u64};
 use std::thread;
 use std::fs;
-use serde_json;
 use serde::{Serialize,Deserialize};
 use std::time::Duration;
 use crate::modules::monitoring;
