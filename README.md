@@ -16,7 +16,8 @@ AEON actively monitors the following critical system metrics:
 *   **CPU Usage**: Monitors overall processor load.
 *   **GPU Usage**: Observes graphics processing unit utilization.
 *   **Network Connections**: Analyzes network traffic and connection status.
-
+*   **Disks Usage**:check disk Usage
+*   **Backup**:system backup make
 ## How to Collaborate
 
 We welcome contributions from anyone interested in improving AEON! Whether you're a seasoned Rust developer, a Linux enthusiast, or just looking to learn, there's a place for you here.
