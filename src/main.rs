@@ -8,7 +8,6 @@ mod modules{
 }
 use daemon::daemon::*;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::{env, io, u64};
 use std::thread;
 use std::fs;
@@ -54,18 +53,12 @@ async fn run() -> io::Result<()>{
            thread::sleep(Duration::from_secs(1));
         }
     });
-   // let _conf = tokio::spawn(async{
-   //      loop {
-   //          let path = PathBuf::from_str(FILE_CONF).expect("Error");
-   //          let path2 = PathBuf::from_str("/tmp/d.json").expect("Error");
-   //          let data = read_file(&path).expect("Error");
-   //          let _ = Log::save_log("FILE_CONF", format!("data:{}",data));
-   //
-   //          let mut file = File::create(&path2).expect("FILE");
-   //          file.write_all(data.as_bytes()).expect("E");
-   //          thread::sleep(Duration::from_secs(5));
-   //      }
-   // });
+    let _disk=tokio::spawn(async {
+        loop {
+            monitoring::check_disk().await;
+            thread::sleep(Duration::from_secs(2));
+        }
+    });
    let _net_handle=tokio::spawn(async {
        loop{
             let _ = check_net().await;
