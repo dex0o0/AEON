@@ -5,7 +5,7 @@ mod daemon{
 }
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell,generate};
-use std::{fs, io::{self, Write}, path::{PathBuf}, str::FromStr,process::Command as bash};
+use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash, str::FromStr};
 use serde::{Serialize,Deserialize};
 use crate::daemon::log::Log;
 
@@ -63,8 +63,8 @@ fn get_data(){
 }
 
 fn create_dir_conf(path:&PathBuf){
-    let path_dir = PathBuf::from_str(CONF_DIR).expect("Error");
-    if !path.parent().expect("ERRORS:get parent path config").exists(){
+    let path_dir = path.parent().expect("Error parent");
+    if !path_dir.exists(){
         let _ = fs::create_dir_all(path_dir).map_err(|e| Log::save_log("ERRORS", format!("can't create dir config:{}",e)));   
     }
     if !path.exists(){
@@ -84,15 +84,18 @@ fn read_data(path:&PathBuf)-> Option<DataConf>{
 
 
 async fn save_conf(data:DataConf){
-    let path = PathBuf::from_str(FILE_DATA_PATH).expect("ERRORS");
-    let mut file = fs::File::create(path).expect("Error");
+    let homedir= env::home_dir().expect("Error homedir");
+    let conf_path = homedir.join(".config/AEON/config.json");
+    let mut file = fs::File::create(&conf_path).expect("Error");
     let json = serde_json::to_string_pretty(&data).expect("Error");
     file.write_all(json.as_bytes()).expect("Error can not write data");
 }
 
 #[tokio::main]
 async fn main()->io::Result<()>{
-     create_dir_conf(&PathBuf::from_str(FILE_DATA_PATH).expect("Error"));
+    let homedir= env::home_dir().expect("Error homedir");
+    let conf_path = homedir.join(".config/AEON/config.json");
+    create_dir_conf(&conf_path);
     let cli = Cli::parse();
     match cli.command{
         Command::Srv{action}=>{

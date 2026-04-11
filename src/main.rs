@@ -9,7 +9,7 @@ mod modules{
 use daemon::daemon::*;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{io, u64};
+use std::{env, io, u64};
 use std::thread;
 use std::fs;
 use serde_json;
@@ -18,7 +18,7 @@ use std::time::Duration;
 use crate::modules::monitoring;
 
 const FILE_CONF:&str="/tmp/data.json";
-const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
+const FILE_DATA_PATH:&str=".config/AEON/config.json";
 
 #[derive(Deserialize,Serialize,Debug)]
 pub struct DataConf{
@@ -42,8 +42,9 @@ async fn main() -> io::Result<()> {
 
 async fn run() -> io::Result<()>{
     println!("Daemon started...");
-    let path = PathBuf::from_str(FILE_DATA_PATH).expect("Error");
-    let conf = read_data(&path).expect("Error");
+    let homedir = env::home_dir().expect("Error");
+    let path_conf = homedir.join(FILE_DATA_PATH);
+    let conf = read_data(&path_conf).expect("Error");
     let cputsh = conf.cputsh.unwrap_or(80.0);
     let _cpu_swap = tokio::spawn(async move{
         loop{
