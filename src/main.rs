@@ -37,7 +37,6 @@ fn read_data(path:&PathBuf)-> Option<DataConf>{
 async fn main() -> io::Result<()> {
     run().await
 }
-
 async fn run() -> io::Result<()>{
     println!("Daemon started...");
     let homedir = env::home_dir().expect("Error");

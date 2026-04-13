@@ -1,9 +1,6 @@
 use crate::daemon::{log::Log, notif::Notif};
 use sysinfo::{Disks, System};
 
-
-
-
 pub fn monswap(){
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -17,8 +14,6 @@ pub fn monswap(){
         let massage = "your use of partition swap is high\nplease check".to_string();
         let _ =Notif::send("AEON", massage);
     }
-
-    
 } 
 pub fn moncpu(value:f32){
     let mut sys = System::new_all();
@@ -37,7 +32,6 @@ pub fn gpu(){
         let _ = Notif::send("AEON", massage);
     }
 }
-
 pub async fn check_disk(){
     let disks = Disks::new_with_refreshed_list();
     disks.iter().for_each(|disk| {
@@ -60,8 +54,6 @@ pub async fn check_disk(){
         }
     }); 
 }
-
-
 pub fn check_mem(){
     let sys = System::new_all();
     // sys.refresh_memory();
