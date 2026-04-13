@@ -20,7 +20,7 @@ pub fn monswap(){
 
     
 } 
-pub async fn moncpu(value:f32){
+pub fn moncpu(value:f32){
     let mut sys = System::new_all();
     sys.refresh_cpu_usage();
     if sys.global_cpu_usage() > value{
@@ -29,7 +29,7 @@ pub async fn moncpu(value:f32){
         let _ = Notif::send("CPU", massage);
     }
 }
-pub async fn gpu(){
+pub fn gpu(){
     let sys = System::new_all();
     if sys.global_cpu_usage() > 80.0{
         let _ = Log::save_log("System", format!("gpu usage:{}",sys.global_cpu_usage()));
@@ -59,4 +59,18 @@ pub async fn check_disk(){
             let _ = Notif::send("DISK", format!("disk:{},is filling please check",disk.name().to_string_lossy()));
         }
     }); 
+}
+
+
+pub fn check_mem(){
+    let sys = System::new_all();
+    // sys.refresh_memory();
+    let total = sys.total_memory();
+    let usage = sys.used_memory();
+    
+    if usage as f32 >= (total as f32 * 80.0){
+        let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
+        let _ = Log::save_log("System", massage.clone());
+        let _ = Notif::send("MEMORY", massage);
+    }
 }

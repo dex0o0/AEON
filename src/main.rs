@@ -16,7 +16,7 @@ use serde::{Serialize,Deserialize};
 use std::time::Duration;
 use crate::modules::monitoring;
 
-const FILE_CONF:&str="/tmp/data.json";
+// const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH:&str=".config/AEON/config.json";
 
 #[derive(Deserialize,Serialize,Debug)]
@@ -31,7 +31,6 @@ fn read_data(path:&PathBuf)-> Option<DataConf>{
    }else {
        None
    }
-   
 }
 
 #[tokio::main]  
@@ -48,9 +47,10 @@ async fn run() -> io::Result<()>{
     let _cpu_swap = tokio::spawn(async move{
         loop{
            monitoring::monswap();
-           monitoring::moncpu(cputsh).await;
-           monitoring::gpu().await;
-           thread::sleep(Duration::from_secs(1));
+           monitoring::moncpu(cputsh);
+           monitoring::gpu();
+           monitoring::check_mem();
+           thread::sleep(Duration::from_millis(300));
         }
     });
     let _disk=tokio::spawn(async {
