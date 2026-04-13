@@ -26,8 +26,8 @@ pub struct DataConf{
 
 fn read_data(path:&PathBuf)-> Option<DataConf>{
    let data = fs::read_to_string(path).expect("ERRORS");
-   if let Ok(json) = serde_json::from_slice(data.as_bytes()){
-       Some(json)
+   if let Ok(json) = serde_json::from_slice(data.as_bytes()){ // i don't known how write this 
+       Some(json) // if you known please fixed 
    }else {
        None
    }
