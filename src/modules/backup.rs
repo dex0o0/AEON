@@ -47,6 +47,8 @@ pub fn create_backup(config: BackupConfig) -> Result<(), String> {
             let level = flate2::Compression::new(config.compression_level as u32);
             Builder::new(GzEncoder::new(tar_file, level))
         },
+        // beacuse this project create in war iran, and my internet is down i can't download crate
+        // for compressing 
         CompressionType::Bzip2 | CompressionType::Xz | CompressionType::None=> {
             // Similar for bzip2
             let level = flate2::Compression::new(config.compression_level as u32);
