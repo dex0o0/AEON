@@ -1,7 +1,7 @@
 use crate::daemon::{log::Log, notif::Notif};
 use sysinfo::{Disks, System};
 
-pub fn monswap(){
+pub async fn monswap(){
     let mut sys = System::new_all();
     sys.refresh_all();
     
@@ -15,7 +15,7 @@ pub fn monswap(){
         let _ =Notif::send("AEON", massage);
     }
 } 
-pub fn moncpu(value:f32){
+pub async fn moncpu(value:f32){
     let mut sys = System::new_all();
     sys.refresh_cpu_usage();
     if sys.global_cpu_usage() > value{
@@ -24,7 +24,7 @@ pub fn moncpu(value:f32){
         let _ = Notif::send("CPU", massage);
     }
 }
-pub fn gpu(){
+pub async fn gpu(){
     let sys = System::new_all();
     if sys.global_cpu_usage() > 80.0{
         let _ = Log::save_log("System", format!("gpu usage:{}",sys.global_cpu_usage()));
@@ -54,7 +54,7 @@ pub async fn check_disk(){
         }
     }); 
 }
-pub fn check_mem(){
+pub async fn check_mem(){
     let sys = System::new_all();
     // sys.refresh_memory();
     let total = sys.total_memory();

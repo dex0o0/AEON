@@ -45,10 +45,10 @@ async fn run() -> io::Result<()>{
     let cputsh = conf.cputsh.unwrap_or(80.0);
     let _cpu_swap = tokio::spawn(async move{
         loop{
-           monitoring::monswap();
-           monitoring::moncpu(cputsh);
-           monitoring::gpu();
-           monitoring::check_mem();
+           monitoring::monswap().await;
+           monitoring::moncpu(cputsh).await;
+           monitoring::gpu().await;
+           monitoring::check_mem().await;
            thread::sleep(Duration::from_millis(300));
         }
     });
