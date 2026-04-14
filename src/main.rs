@@ -6,6 +6,7 @@ mod daemon{
 mod modules{
     pub mod monitoring;
     pub mod backup;
+    // pub mod test;
 }
 use daemon::daemon::*;
 use std::path::PathBuf;
