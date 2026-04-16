@@ -24,7 +24,11 @@ impl Log {
             .create(true)
             .append(true)
             .open(path_log)?;
-        let _ = writeln!(log,"{}",body);
+
+        let time:DateTime<Local>=Local::now();
+        let massage = format!("{}: {}",time,body);
+
+        let _ = writeln!(log,"{}",massage);
         Ok(())
     }
 }
