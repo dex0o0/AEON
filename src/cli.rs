@@ -1,5 +1,5 @@
 mod daemon{
-    pub mod daemon;
+    pub mod core;
     pub mod notif;
     pub mod log;
 }

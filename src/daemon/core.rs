@@ -1,8 +1,9 @@
 use std::{
     io,process::Command, sync::atomic::{AtomicBool,Ordering}
-
 };
-use crate::{daemon::{log,notif::Notif},};
+use crate::{
+    daemon::{log,notif::Notif} 
+};
 
 static NETWORK_IS_UP:AtomicBool=AtomicBool::new(true);
 
@@ -46,20 +47,3 @@ pub async fn check_net()-> io::Result<()>{
     } 
     Ok(())  
 }
-
-// pub async fn file_chek(path:PathBuf)-> String{
-//     read_file(&path).map(|data| data).expect("Err")
-// }
-// pub fn read_file(path:&PathBuf)-> Option<String>{
-//     let mut file = fs::File::open(path).expect("Err");
-//     let mut data = String::new();
-//     if file.read_to_string(&mut data).is_ok(){
-//         let json = serde_json::to_string_pretty(&data).expect("Error");
-//         println!("json:{}",json);
-//         Some(json)
-//     }else {
-//         None
-//     }
-//
-//
-// }
