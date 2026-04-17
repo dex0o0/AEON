@@ -54,7 +54,7 @@ pub async fn moncpu(state:&mut Systate , value:f32){
         state.cpu_100_notif.store(false, Ordering::SeqCst);
     }
     
-    //if CPU usage for 10sec > value notify warning
+    //if CPU usage for 5sec > value notify warning
     if cpu_usage > value{
         let mut start_opt = state.cpu_warning_start.lock().expect("Error can't lock cpu_warning_start lock");
 
@@ -62,10 +62,10 @@ pub async fn moncpu(state:&mut Systate , value:f32){
             *start_opt = Some(Instant::now());
         }else {
             let elapsed = start_opt.expect("Error get elapsed").elapsed();
-            if elapsed >= Duration::from_secs(10){
+            if elapsed >= Duration::from_secs(5){
                 let already_warned = state.cpu_warning_active.load(Ordering::SeqCst);
                 if !already_warned{
-                    let massage = format!("CPU very high:{}%",state.sys.global_cpu_usage());
+                    let massage = format!("your CPU for 5 secend is high\n=>{}%",state.sys.global_cpu_usage());
                     notif_log_sys!(massage);
                     state.cpu_warning_active.store(true,Ordering::SeqCst);
                 }
