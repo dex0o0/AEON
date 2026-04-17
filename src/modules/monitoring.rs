@@ -1,6 +1,4 @@
 use std::{sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
-
-use crate::daemon::{log::Log, notif::Notif};
 use sysinfo::{Disks, System};
 
 pub struct Systate{
@@ -73,7 +71,9 @@ pub async fn moncpu(state:&mut Systate , value:f32){
         }
 
     }else {
+
         let mut start_opt = state.cpu_warning_start.lock().expect("Error to unlock cpu_warning_start");
+
         *start_opt = None;
         if state.cpu_warning_active.load(Ordering::SeqCst){
             state.cpu_warning_active.store(false, Ordering::SeqCst);
@@ -87,12 +87,15 @@ pub async fn moncpu(state:&mut Systate , value:f32){
 pub async fn check_disk(disks:&Disks){
     // let disks = Disks::new_with_refreshed_list();
     disks.iter().for_each(|disk| {
+
         let total = disk.total_space();
         let free_space = disk.available_space();
         let use_space = total - free_space;
         let zone90 = total as f32 * 0.9;
         let montpoint = disk.mount_point().display();
+
         if use_space as f32 >= zone90{
+
             let masssage = format!("storage space filling\n\
                 disk\ttotal\tusage\tfree\n\
                 {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
@@ -101,21 +104,21 @@ pub async fn check_disk(disks:&Disks){
                 (use_space as f32 /1024.0/1024.0/1024.0),
                 (free_space as f32 /1024.0/1024.0/1024.0),
                 montpoint);
-            let _ = Log::save_log("disk", masssage);
-            let _ = Notif::send("DISK", format!("disk:{},is filling please check",disk.name().to_string_lossy()));
+
+            log_sys!("{}",masssage);
+            notif_send!("{}",format!("disk:{},is filling please check",disk.name().to_string_lossy()));
         }
     }); 
 }
 
 //check MEMORY usage
 pub async fn check_mem(sys:&mut System){
-    // sys.refresh_memory();
+    sys.refresh_memory();
     let total = sys.total_memory();
     let usage = sys.used_memory();
     
     if usage as f32 >= (total as f32 * 0.8){
         let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
-        let _ = Log::save_log("System", massage.clone());
-        let _ = Notif::send("MEMORY", massage);
+        notif_log_sys!(massage);
     }
 }
