@@ -15,7 +15,7 @@ impl Systate {
     }
 }
 pub async fn monswap(sys:&mut System){
-    sys.refresh_all();
+    sys.refresh_cpu_usage();
     
     let swap = sysinfo::System::free_swap(sys);
     let total = sysinfo::System::total_swap(sys);
