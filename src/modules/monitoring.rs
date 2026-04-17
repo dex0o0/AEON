@@ -1,9 +1,14 @@
+use std::{sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
+
 use crate::daemon::{log::Log, notif::Notif};
 use sysinfo::{Disks, System};
 
 pub struct Systate{
     pub sys:System,
     pub disk:Disks,
+    pub cpu_warning_active:AtomicBool,
+    pub cpu_warning_start:Mutex<Option<Instant>>,
+    pub cpu_100_notif:AtomicBool,
 }
 
 impl Systate {
@@ -11,6 +16,9 @@ impl Systate {
         Self{
             sys:System::new_all(),
             disk:Disks::new_with_refreshed_list(),
+            cpu_warning_active:AtomicBool::new(false),
+            cpu_warning_start:Mutex::new(None),
+            cpu_100_notif:AtomicBool::new(false),
         }
     }
 }
@@ -30,14 +38,51 @@ pub async fn monswap(sys:&mut System){
     }
 } 
 //check CPU usage
-pub async fn moncpu(sys:&mut System , value:f32){
-    sys.refresh_cpu_usage();
-    if sys.global_cpu_usage() > value{
+pub async fn moncpu(state:&mut Systate , value:f32){
+    state.sys.refresh_cpu_usage();
+    let cpu_usage = state.sys.global_cpu_usage();
 
-        let massage = format!("CPU very high:{}%",sys.global_cpu_usage());
-        notif_log_sys!(massage);
+    //100% send now notify
+    if cpu_usage >= 100.0{
+        let already_notifed = state.cpu_100_notif.load(Ordering::SeqCst);
+        if !already_notifed{
+            let massage = format!("oh your CPU max usage:{:.2}%",cpu_usage);
+            notif_log_sys!(massage);
+            state.cpu_100_notif.store(true, Ordering::SeqCst);
+        }
+    }else {
+        state.cpu_100_notif.store(false, Ordering::SeqCst);
+    }
+    
+    //if CPU usage for 10sec > value notify warning
+    if cpu_usage > value{
+        let mut start_opt = state.cpu_warning_start.lock().expect("Error can't lock cpu_warning_start lock");
+
+        if start_opt.is_none(){
+            *start_opt = Some(Instant::now());
+        }else {
+            let elapsed = start_opt.expect("Error get elapsed").elapsed();
+            if elapsed >= Duration::from_secs(10){
+                let already_warned = state.cpu_warning_active.load(Ordering::SeqCst);
+                if !already_warned{
+                    let massage = format!("CPU very high:{}%",state.sys.global_cpu_usage());
+                    notif_log_sys!(massage);
+                    state.cpu_warning_active.store(true,Ordering::SeqCst);
+                }
+            }
+        }
+
+    }else {
+        let mut start_opt = state.cpu_warning_start.lock().expect("Error to unlock cpu_warning_start");
+        *start_opt = None;
+        if state.cpu_warning_active.load(Ordering::SeqCst){
+            state.cpu_warning_active.store(false, Ordering::SeqCst);
+        }
     }
 }
+
+
+
 //check DISK usage 
 pub async fn check_disk(disks:&Disks){
     // let disks = Disks::new_with_refreshed_list();

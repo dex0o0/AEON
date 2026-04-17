@@ -65,7 +65,7 @@ async fn run() -> io::Result<()>{
         80.0
     }).expect("Error to convet data cpu-treshold");
 
-    let mut inter300mil = tokio::time::interval(Duration::from_millis(300));
+    let mut inter100mil = tokio::time::interval(Duration::from_millis(100));
     let mut inter60sec = tokio::time::interval(Duration::from_secs(1));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
 
@@ -73,10 +73,10 @@ async fn run() -> io::Result<()>{
     let _cpu_swap = tokio::spawn(async move{
         loop{
 
-            inter300mil.tick().await;
+            inter100mil.tick().await;
             let mut state = state_clone.lock().await;
             monitoring::monswap(&mut state.sys).await;
-            monitoring::moncpu(&mut state.sys,cputsh).await;
+            monitoring::moncpu(&mut state,cputsh).await;
             monitoring::check_mem(&mut state.sys).await;
         }
     });
