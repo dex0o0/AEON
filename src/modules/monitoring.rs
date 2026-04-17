@@ -1,6 +1,9 @@
-use std::{sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
+use std::{io,process::Command, sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
 use sysinfo::{Disks, System};
 
+static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
+static DISK_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
+static MEM_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
 pub struct Systate{
     pub sys:System,
     pub disk:Disks,
@@ -23,8 +26,7 @@ impl Systate {
 
 //check SWAP usage
 pub async fn monswap(sys:&mut System){
-    sys.refresh_cpu_usage();
-    
+    sys.refresh_memory();
     let swap = sysinfo::System::free_swap(sys);
     let total = sysinfo::System::total_swap(sys);
     if total == 0{
@@ -41,7 +43,7 @@ pub async fn moncpu(state:&mut Systate , value:f32){
     let cpu_usage = state.sys.global_cpu_usage();
 
     //100% send now notify
-    if cpu_usage >= 100.0{
+    if cpu_usage >= 99.0{
         let already_notifed = state.cpu_100_notif.load(Ordering::SeqCst);
         if !already_notifed{
             let massage = format!("oh your CPU max usage:{:.2}%",cpu_usage);
@@ -95,19 +97,24 @@ pub async fn check_disk(disks:&Disks){
         let montpoint = disk.mount_point().display();
 
         if use_space as f32 >= zone90{
+            if !DISK_WARNING_ACTIVE.load(Ordering::SeqCst){
+                let masssage = format!("storage space filling\n\
+                    disk\ttotal\tusage\tfree\n\
+                    {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
+                    disk.name().to_string_lossy(),
+                    (total as f32 / 1024.0/1024.0/1024.0),
+                    (use_space as f32 /1024.0/1024.0/1024.0),
+                    (free_space as f32 /1024.0/1024.0/1024.0),
+                    montpoint);
 
-            let masssage = format!("storage space filling\n\
-                disk\ttotal\tusage\tfree\n\
-                {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
-                disk.name().to_string_lossy(),
-                (total as f32 / 1024.0/1024.0/1024.0),
-                (use_space as f32 /1024.0/1024.0/1024.0),
-                (free_space as f32 /1024.0/1024.0/1024.0),
-                montpoint);
-
-            log_sys!("{}",masssage);
-            notif_send!("{}",format!("disk:{},is filling please check",disk.name().to_string_lossy()));
+                log_sys!("{}",masssage);
+                notif_send!("{}",format!("disk:{},is filling please check",disk.name().to_string_lossy()));
+                DISK_WARNING_ACTIVE.store(true, Ordering::SeqCst);
+            }
+        }else {
+            DISK_WARNING_ACTIVE.store(false, Ordering::SeqCst);
         }
+
     }); 
 }
 
@@ -118,7 +125,52 @@ pub async fn check_mem(sys:&mut System){
     let usage = sys.used_memory();
     
     if usage as f32 >= (total as f32 * 0.8){
-        let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
-        notif_log_sys!(massage);
+        if !MEM_WARNING_ACTIVE.load(Ordering::SeqCst){
+            let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
+            notif_log_sys!(massage);
+            MEM_WARNING_ACTIVE.store(true, Ordering::SeqCst);
+        }
+    }else {
+        MEM_WARNING_ACTIVE.store(false, Ordering::SeqCst);
     }
+}
+pub async fn check_net(ip:&str)-> io::Result<()>{
+    let ping = Command::new("ping")
+        .args(["-W 5","-c 1",ip])
+        .output();
+    match ping {
+        Ok(output)=>{
+            let was_net_up = NETWORK_IS_UP.load(Ordering::SeqCst);
+            
+            if output.status.success(){
+                //net up 
+                //check status
+                if !was_net_up{
+                    notif_send!("network is up");
+                    log_error!("network is up");
+                    NETWORK_IS_UP.store(true, Ordering::SeqCst);
+                }
+            }else {
+                //net down
+                //check status
+                if was_net_up{
+                    notif_send!("network is down");
+                    log_error!("network is down");
+                    NETWORK_IS_UP.store(false, Ordering::SeqCst);
+                } 
+            }
+        }
+        Err(e)=>{
+            eprintln!("Failed to execute ping command:{}",e);
+            let was_net_up = NETWORK_IS_UP.load(Ordering::SeqCst);
+            if was_net_up {
+                let massage = format!("network connection lost:{}",e);
+                notif_send!("{}",massage);
+                log_error!("network connection lost");
+                NETWORK_IS_UP.store(false, Ordering::SeqCst);
+            }
+            return Err(e);
+        }
+    } 
+    Ok(())  
 }
