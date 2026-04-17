@@ -7,7 +7,7 @@ mod modules{
     pub mod backup;
     
 }
-use clap::{CommandFactory, Parser, Subcommand,ValueEnum};
+use clap::{CommandFactory, Parser, Subcommand,ValueEnum, builder::Str};
 use clap_complete::{Shell,generate};
 use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash, str::FromStr};
 use serde::{Serialize,Deserialize};
@@ -103,16 +103,6 @@ fn create_dir_conf(path:&PathBuf){
     if !path.exists(){
         let _ = fs::File::create(path).map_err(|e| Log::save_log("ERRORS", format!("can't create file config:{}",e)));
     }
-}
-
-fn read_data(path:&PathBuf)-> Option<DataConf>{
-   let data = fs::read_to_string(path).expect("ERRORS");
-   if let Ok(json) = serde_json::from_slice(data.as_bytes()){
-       Some(json)
-   }else {
-       None
-   }
-   
 }
 
 
