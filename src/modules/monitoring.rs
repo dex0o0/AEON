@@ -62,6 +62,7 @@ pub async fn check_disk(disks:&Disks){
     }); 
 }
 
+//check MEMORY usage
 pub async fn check_mem(sys:&mut System){
     // sys.refresh_memory();
     let total = sys.total_memory();
