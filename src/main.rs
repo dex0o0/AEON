@@ -12,7 +12,6 @@ mod modules{
     pub mod backup;
 }
 
-use daemon::core::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, io, u64};
@@ -93,7 +92,7 @@ async fn run() -> io::Result<()>{
     let _net_handle=tokio::spawn(async move{
         loop{
             inter60sec.tick().await;
-            let _ = check_net("8.8.8.8").await;
+            let _ = monitoring::check_net("8.8.8.8").await;
         }
     });
 
