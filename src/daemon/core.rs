@@ -9,7 +9,7 @@ static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
 
 pub async fn check_net(ip:&str)-> io::Result<()>{
     let ping = Command::new("ping")
-        .args(["-W 10","-c 2",ip])
+        .args(["-W 5","-c 1",ip])
         .output();
     match ping {
         Ok(output)=>{
@@ -19,7 +19,7 @@ pub async fn check_net(ip:&str)-> io::Result<()>{
                 //net up 
                 //check status
                 if !was_net_up{
-                    let _ = Notif::send("NETWORK", "back to online".to_string());
+                    let _ = Notif::send("AEON", "network is up".to_string());
                     let _ = log::senderror("network up");
                     NETWORK_IS_UP.store(true, Ordering::SeqCst);
                 }
@@ -27,7 +27,7 @@ pub async fn check_net(ip:&str)-> io::Result<()>{
                 //net down
                 //check status
                 if was_net_up{
-                    let _ = Notif::send("NETWORK", "network is down".to_string());
+                    let _ = Notif::send("AEON", "network is down".to_string());
                     let _ = log::senderror("network down");
                     NETWORK_IS_UP.store(false, Ordering::SeqCst);
                 } 
@@ -38,7 +38,7 @@ pub async fn check_net(ip:&str)-> io::Result<()>{
             let was_net_up = NETWORK_IS_UP.load(Ordering::SeqCst);
             if was_net_up {
                 let massage = format!("network connection lost:{}",e);
-                let _ = Notif::send("NETWORK", massage);
+                let _ = Notif::send("AEON", massage);
                 let _ = log::senderror("network down");
                 NETWORK_IS_UP.store(false, Ordering::SeqCst);
             }
