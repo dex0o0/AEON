@@ -14,6 +14,8 @@ impl Systate {
         }
     }
 }
+
+//check SWAP usage
 pub async fn monswap(sys:&mut System){
     sys.refresh_cpu_usage();
     
@@ -27,6 +29,7 @@ pub async fn monswap(sys:&mut System){
         notif_log_sys!(massage);
     }
 } 
+//check CPU usage
 pub async fn moncpu(sys:&mut System , value:f32){
     sys.refresh_cpu_usage();
     if sys.global_cpu_usage() > value{
@@ -35,6 +38,7 @@ pub async fn moncpu(sys:&mut System , value:f32){
         notif_log_sys!(massage);
     }
 }
+//check DISK usage 
 pub async fn check_disk(disks:&Disks){
     // let disks = Disks::new_with_refreshed_list();
     disks.iter().for_each(|disk| {
@@ -57,12 +61,13 @@ pub async fn check_disk(disks:&Disks){
         }
     }); 
 }
+
 pub async fn check_mem(sys:&mut System){
     // sys.refresh_memory();
     let total = sys.total_memory();
     let usage = sys.used_memory();
     
-    if usage as f32 >= (total as f32 * 80.0){
+    if usage as f32 >= (total as f32 * 0.8){
         let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
         let _ = Log::save_log("System", massage.clone());
         let _ = Notif::send("MEMORY", massage);
