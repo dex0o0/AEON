@@ -17,8 +17,8 @@ impl Systate {
 pub async fn monswap(sys:&mut System){
     sys.refresh_all();
     
-    let swap = sysinfo::System::free_swap(&sys);
-    let total = sysinfo::System::total_swap(&sys);
+    let swap = sysinfo::System::free_swap(sys);
+    let total = sysinfo::System::total_swap(sys);
     if total == 0{
         return;
     }
