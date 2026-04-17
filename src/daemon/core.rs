@@ -7,9 +7,9 @@ use crate::{
 
 static NETWORK_IS_UP:AtomicBool=AtomicBool::new(true);
 
-pub async fn check_net()-> io::Result<()>{
+pub async fn check_net(ip:&str)-> io::Result<()>{
     let ping = Command::new("ping")
-        .args(["-W 5","-c 1","8.8.8.8"])
+        .args(["-W 10","-c 2",ip])
         .output();
     match ping {
         Ok(output)=>{

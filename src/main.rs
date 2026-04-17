@@ -94,7 +94,7 @@ async fn run() -> io::Result<()>{
     let _net_handle=tokio::spawn(async move{
         loop{
             inter60sec.tick().await;
-            let _ = check_net().await;
+            let _ = check_net("8.8.8.8").await;
         }
     });
 
