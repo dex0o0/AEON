@@ -50,6 +50,7 @@ async fn main() -> io::Result<()> {
 }
 async fn run() -> io::Result<()>{
     println!("Daemon started...");
+
     let homedir = env::home_dir().expect("Error");
     let path_conf = homedir.join(FILE_DATA_PATH);
     let conf = read_data(&path_conf).unwrap_or({
@@ -58,13 +59,17 @@ async fn run() -> io::Result<()>{
         }
     });
     
-    let systate = Systate::new();
-    let state = Arc::new(tokio::sync::Mutex::new(systate));
+    let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
 
-    let cputsh = conf.cputsh.unwrap_or(80.0);
+    let cputsh = conf.cputsh.ok_or_else(||{
+        eprintln!("Error in read data cpu-treshold");
+        80.0
+    }).expect("Error to convet data cpu-treshold");
+
     let mut inter300mil = tokio::time::interval(Duration::from_millis(300));
     let mut inter60sec = tokio::time::interval(Duration::from_secs(60));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
+
     let state_clone = state.clone();
     let _cpu_swap = tokio::spawn(async move{
         loop{
@@ -76,6 +81,7 @@ async fn run() -> io::Result<()>{
             monitoring::check_mem(&mut state.sys).await;
         }
     });
+
     let state_clone = state.clone();
     let _disk=tokio::spawn(async move{
         loop {
@@ -84,12 +90,14 @@ async fn run() -> io::Result<()>{
             monitoring::check_disk(&state.disk).await;
         }
     });
-   let _net_handle=tokio::spawn(async move{
-       loop{
-           inter60sec.tick().await;
+
+    let _net_handle=tokio::spawn(async move{
+        loop{
+            inter60sec.tick().await;
             let _ = check_net().await;
-       }
-   });
+        }
+    });
+
    let _ =tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
    Ok(())
 }
