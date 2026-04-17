@@ -1,8 +1,20 @@
 use crate::daemon::{log::Log, notif::Notif};
 use sysinfo::{Disks, System};
 
-pub async fn monswap(){
-    let mut sys = System::new_all();
+pub struct Systate{
+    pub sys:System,
+    pub disk:Disks,
+}
+
+impl Systate {
+    pub fn new()->Self{
+        Self{
+            sys:System::new_all(),
+            disk:Disks::new_with_refreshed_list(),
+        }
+    }
+}
+pub async fn monswap(sys:&mut System){
     sys.refresh_all();
     
     let swap = sysinfo::System::free_swap(&sys);
@@ -15,8 +27,7 @@ pub async fn monswap(){
         notif_log_sys!(massage);
     }
 } 
-pub async fn moncpu(value:f32){
-    let mut sys = System::new_all();
+pub async fn moncpu(sys:&mut System , value:f32){
     sys.refresh_cpu_usage();
     if sys.global_cpu_usage() > value{
 
@@ -24,8 +35,8 @@ pub async fn moncpu(value:f32){
         notif_log_sys!(massage);
     }
 }
-pub async fn check_disk(){
-    let disks = Disks::new_with_refreshed_list();
+pub async fn check_disk(disks:&Disks){
+    // let disks = Disks::new_with_refreshed_list();
     disks.iter().for_each(|disk| {
         let total = disk.total_space();
         let free_space = disk.available_space();
@@ -46,8 +57,7 @@ pub async fn check_disk(){
         }
     }); 
 }
-pub async fn check_mem(){
-    let sys = System::new_all();
+pub async fn check_mem(sys:&mut System){
     // sys.refresh_memory();
     let total = sys.total_memory();
     let usage = sys.used_memory();

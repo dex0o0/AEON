@@ -15,11 +15,12 @@ mod modules{
 
 use daemon::core::*;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{env, io, u64};
 use std::fs::{self, File};
 use serde::{Serialize,Deserialize};
 use std::time::Duration;
-use crate::modules::monitoring;
+use crate::modules::monitoring::{self, Systate};
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH:&str=".config/AEON/config.json";
@@ -34,10 +35,12 @@ fn read_data(path:&PathBuf)-> Option<DataConf>{
         File::create(path).expect("Error:can't create config file");
     }
    let data = fs::read_to_string(path).expect("can't read data as config file");
-   if let Ok(json) = serde_json::from_slice(data.as_bytes()){ // i don't known how write this 
-       Some(json) // if you known please fixed 
-   }else {
-       None
+   match serde_json::from_str(&data) {
+       Ok(json)=> Some(json),
+       Err(e)=>{
+            eprintln!("Error parsing data config:{}",e);
+            None
+       }
    }
 }
 
@@ -54,31 +57,37 @@ async fn run() -> io::Result<()>{
             cputsh:Some(80.0),
         }
     });
+    
+    let systate = Systate::new();
+    let state = Arc::new(tokio::sync::Mutex::new(systate));
+
     let cputsh = conf.cputsh.unwrap_or(80.0);
     let mut inter300mil = tokio::time::interval(Duration::from_millis(300));
     let mut inter60sec = tokio::time::interval(Duration::from_secs(60));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
+    let state_clone = state.clone();
     let _cpu_swap = tokio::spawn(async move{
         loop{
+
             inter300mil.tick().await;
-            monitoring::monswap().await;
-            monitoring::moncpu(cputsh).await;
-            monitoring::check_mem().await;
-           // thread::sleep(Duration::from_millis(300));
+            let mut state = state_clone.lock().await;
+            monitoring::monswap(&mut state.sys).await;
+            monitoring::moncpu(&mut state.sys,cputsh).await;
+            monitoring::check_mem(&mut state.sys).await;
         }
     });
+    let state_clone = state.clone();
     let _disk=tokio::spawn(async move{
         loop {
             inter2sec.tick().await;
-            monitoring::check_disk().await;
-            // thread::sleep(Duration::from_secs(2));
+            let state = state_clone.lock().await;
+            monitoring::check_disk(&state.disk).await;
         }
     });
    let _net_handle=tokio::spawn(async move{
        loop{
            inter60sec.tick().await;
             let _ = check_net().await;
-            // thread::sleep(Duration::from_secs(60));
        }
    });
    let _ =tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
