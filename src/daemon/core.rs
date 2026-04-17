@@ -5,7 +5,7 @@ use crate::{
     daemon::{log,notif::Notif} 
 };
 
-static NETWORK_IS_UP:AtomicBool=AtomicBool::new(true);
+static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
 
 pub async fn check_net(ip:&str)-> io::Result<()>{
     let ping = Command::new("ping")
