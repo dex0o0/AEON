@@ -1,12 +1,18 @@
 use std::{io,process::Command, sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
 use sysinfo::{Disks, System};
+use axum::{Router,routing::get};
 
 static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
 static DISK_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
 static MEM_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
+
+#[derive(Debug)]
 pub struct Systate{
     pub sys:System,
-    pub disk:Disks,
+    pub disk:Mutex<Disks>,
+    pub cpu_usage:Mutex<f32>,
+    pub mem_useag:Mutex<f32>,
+    pub swap_usage:Mutex<f32>,
     pub cpu_warning_active:AtomicBool,
     pub cpu_warning_start:Mutex<Option<Instant>>,
     pub cpu_100_notif:AtomicBool,
@@ -16,7 +22,10 @@ impl Systate {
     pub fn new()->Self{
         Self{
             sys:System::new_all(),
-            disk:Disks::new_with_refreshed_list(),
+            disk:Mutex::new(Disks::new_with_refreshed_list()),
+            cpu_usage:Mutex::new(0.0),
+            mem_useag:Mutex::new(0.0),
+            swap_usage:Mutex::new(0.0),
             cpu_warning_active:AtomicBool::new(false),
             cpu_warning_start:Mutex::new(None),
             cpu_100_notif:AtomicBool::new(false),
@@ -25,10 +34,13 @@ impl Systate {
 }
 
 //check SWAP usage
-pub async fn monswap(sys:&mut System){
-    sys.refresh_memory();
-    let swap = sysinfo::System::free_swap(sys);
-    let total = sysinfo::System::total_swap(sys);
+pub async fn monswap(state:&mut Systate){
+    state.sys.refresh_memory();
+    let swap = sysinfo::System::free_swap(&state.sys);
+    let total = sysinfo::System::total_swap(&state.sys);
+    
+    let mut mem = state.swap_usage.lock().unwrap();
+    *mem = (total - swap ) as f32 /1024.0/1024.0;
     if total == 0{
         return;
     }
@@ -41,7 +53,9 @@ pub async fn monswap(sys:&mut System){
 pub async fn moncpu(state:&mut Systate , value:f32){
     state.sys.refresh_cpu_usage();
     let cpu_usage = state.sys.global_cpu_usage();
-
+    let mut cpu = state.cpu_usage.lock().expect("E");
+    *cpu = cpu_usage;
+    drop(cpu);
     //100% send now notify
     if cpu_usage >= 99.0{
         let already_notifed = state.cpu_100_notif.load(Ordering::SeqCst);
@@ -86,7 +100,7 @@ pub async fn moncpu(state:&mut Systate , value:f32){
 
 
 //check DISK usage 
-pub async fn check_disk(disks:&Disks){
+pub fn check_disk(disks:&Disks){
     // let disks = Disks::new_with_refreshed_list();
     disks.iter().for_each(|disk| {
 
@@ -119,11 +133,17 @@ pub async fn check_disk(disks:&Disks){
 }
 
 //check MEMORY usage
-pub async fn check_mem(sys:&mut System){
-    sys.refresh_memory();
-    let total = sys.total_memory();
-    let usage = sys.used_memory();
+pub async fn check_mem(state:&mut Systate){
+    state.sys.refresh_memory();
+    let total = state.sys.total_memory();
+    let usage = state.sys.used_memory();
     
+
+    let mut mem = state.mem_useag.lock().unwrap();
+    *mem = usage as f32/1024.0/1024.0/1024.0;
+    drop(mem);
+
+
     if usage as f32 >= (total as f32 * 0.8){
         if !MEM_WARNING_ACTIVE.load(Ordering::SeqCst){
             let massage = format!("mempry usage is very high:{}",(usage as f32/1024.0/1024.0/1024.0));
@@ -134,6 +154,8 @@ pub async fn check_mem(sys:&mut System){
         MEM_WARNING_ACTIVE.store(false, Ordering::SeqCst);
     }
 }
+
+
 pub async fn check_net(ip:&str)-> io::Result<()>{
     let ping = Command::new("ping")
         .args(["-W 5","-c 1",ip])

@@ -8,6 +8,7 @@ name ="aeoncli"
 path="src/cli.rs"
 
 [dependencies]
+axum = "0.8.8"
 bytes = "1.11.1"
 bzip2 = "0.6.1"
 chrono = "0.4.44"
@@ -29,5 +30,7 @@ sysinfo = "0.37.2"
 tar = "0.4.44"
 tokio = {version="1.49.0" , features=["full"] } 
 tokio-util ={version="0.7.18",features=["codec"]} 
+tower-http = {version = "0.6.8" , features=["cors"]}
+update = "0.0.0"
 walkdir = "2.5.0"
 xz2 = "0.1.7"

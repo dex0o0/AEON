@@ -1,6 +1,5 @@
 #[macro_use]
 mod macros;
-
 mod daemon{
     pub mod core;
     pub mod notif;
@@ -10,14 +9,20 @@ mod daemon{
 mod modules{
     pub mod monitoring;
     pub mod backup;
+    pub mod REST;
 }
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, io, u64};
 use std::fs::{self, File};
+use tower_http::cors::{CorsLayer,Any};
+use axum::Router;
+use axum::extract::State;
+use axum::routing::get;
 use serde::{Serialize,Deserialize};
 use std::time::Duration;
+use crate::modules::REST::start_server;
 use crate::modules::monitoring::{self, Systate};
 
 // const FILE_CONF:&str="/tmp/data.json";
@@ -58,7 +63,7 @@ async fn run() -> io::Result<()>{
     });
     
     let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
-
+    
     let cputsh = conf.cputsh.ok_or_else(||{
         eprintln!("Error in read data cpu-treshold");
         80.0
@@ -68,15 +73,28 @@ async fn run() -> io::Result<()>{
     let mut inter60sec = tokio::time::interval(Duration::from_secs(1));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
 
+    // let state_for_serv = state.clone();
+    // tokio::spawn(async move {
+    //     let app = Router::new()
+    //         .route("/health", get(heath_handle))
+    //         .layer(CorsLayer::very_permissive())
+    //         .with_state(state_for_serv);
+    //     let lisener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
+    //     axum::serve(lisener,app).await.unwrap();
+    // });
+    
+    tokio::spawn(start_server(state.clone()));
+
+
     let state_clone = state.clone();
     let _cpu_swap = tokio::spawn(async move{
         loop{
 
             inter100mil.tick().await;
             let mut state = state_clone.lock().await;
-            monitoring::monswap(&mut state.sys).await;
+            monitoring::monswap(&mut state).await;
             monitoring::moncpu(&mut state,cputsh).await;
-            monitoring::check_mem(&mut state.sys).await;
+            monitoring::check_mem(&mut state).await;
         }
     });
 
@@ -85,7 +103,8 @@ async fn run() -> io::Result<()>{
         loop {
             inter2sec.tick().await;
             let state = state_clone.lock().await;
-            monitoring::check_disk(&state.disk).await;
+            let disks = state.disk.lock().unwrap();
+            monitoring::check_disk(&disks);
         }
     });
 
@@ -98,4 +117,9 @@ async fn run() -> io::Result<()>{
 
    let _ =tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
    Ok(())
+}
+async fn heath_handle(State(state):State<Arc<tokio::sync::Mutex<Systate>>>)-> String{
+    let state = state.lock().await;
+    let cpu = state.cpu_usage.lock().expect("e");
+    format!("CPU usage:{:.2}%",cpu)
 }
