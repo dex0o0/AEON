@@ -7,7 +7,7 @@ mod modules{
     pub mod backup;
     
 }
-use clap::{CommandFactory, Parser, Subcommand,ValueEnum, builder::Str};
+use clap::{CommandFactory, Parser, Subcommand,ValueEnum};
 use clap_complete::{Shell,generate};
 use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash, str::FromStr};
 use serde::{Serialize,Deserialize};

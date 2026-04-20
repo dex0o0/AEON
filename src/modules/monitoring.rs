@@ -1,6 +1,5 @@
 use std::{io,process::Command, sync::{Mutex, atomic::{AtomicBool, Ordering}}, time::{Duration, Instant}};
 use sysinfo::{Disks, System};
-use axum::{Router,routing::get};
 
 static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
 static DISK_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);

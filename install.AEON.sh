@@ -1,5 +1,6 @@
 #!/bin/bash
 
+LOGROTATE_PATH=/etc/logrotate.d/aeon
 ROOT_DIR=/usr/bin/
 DIR_RELEASE=$(pwd)/target/release
 ROOT_BINARY=/usr/bin/AEON
@@ -29,9 +30,41 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 )
+
+LOG_R_CONF=$(cat<<EOF
+$HOME/.log/dex_daemon/*.log{
+daily
+rotate 7
+cpmpress
+delaycompress
+missingok
+notifempty
+maxsize 100M
+create 644 $USER $USER
+}
+EOF
+)
+
 error_exit(){
-  echo "ERROR:$1">&2
+echo "ERROR:$1">&2
   exit 1
+}
+
+
+
+config_logrotate(){
+  echo "configing logrotate..."
+  if ! [ -f $LOGROTATE_PATH ]; then
+    echo "creating" && sudo touch $LOGROTATE_PATH || error_exit "Error to create logrotate file \{$LOGROTATE_PATH\}"
+    echo "config logrotate.." && echo "$LOG_R_CONF" | sudo tee "$LOGROTATE_PATH">/dev/null || error_exit "Error config logrotate"
+    echo "---config completed---"
+  else
+    echo "config loger"
+    da=$(cat $LOGROTATE_PATH)
+    if ! (( $da == $LOG_R_CONF ));then
+      sudo rm $LOGROTATE_PATH && config_logrotate || error_exit "Error to conf $LOGROTATE_PATH"
+    fi
+  fi
 }
 
 groupConf(){
@@ -91,6 +124,7 @@ if which cargo >/dev/null;then
       echo "calling fn conf..." && confing_aeon 
     fi
     echo "calling fn group conf..." && groupConf && echo "group confinged" 
+    echo "calling fn loger config.."&& config_logrotate && echo "loger configed"
     echo "reloading.." && reload_daemon 
     
   else

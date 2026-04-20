@@ -44,5 +44,3 @@ pub fn senderror(noties:&'static str)-> std::io::Result<()>{
     let _ =writeln!(logerror,"{}",massage);
     Ok(())
 }
-
-

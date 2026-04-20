@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+
 mod daemon{
     pub mod core;
     pub mod notif;
@@ -9,20 +10,17 @@ mod daemon{
 mod modules{
     pub mod monitoring;
     pub mod backup;
-    pub mod REST;
+    pub mod rest;
 }
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, io, u64};
 use std::fs::{self, File};
-use tower_http::cors::{CorsLayer,Any};
-use axum::Router;
 use axum::extract::State;
-use axum::routing::get;
 use serde::{Serialize,Deserialize};
 use std::time::Duration;
-use crate::modules::REST::start_server;
+use crate::modules::rest::start_server;
 use crate::modules::monitoring::{self, Systate};
 
 // const FILE_CONF:&str="/tmp/data.json";
