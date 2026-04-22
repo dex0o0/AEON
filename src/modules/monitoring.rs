@@ -90,7 +90,7 @@ pub async fn moncpu(state:&mut Systate , value:f32){
             *start_opt = Some(Instant::now());
         }else {
             let elapsed = start_opt.expect("Error get elapsed").elapsed();
-            if elapsed >= Duration::from_secs(5){
+            if elapsed >= Duration::from_secs(10){
                 let already_warned = state.cpu_warning_active.load(Ordering::SeqCst);
                 if !already_warned{
                     let massage = format!("your CPU for 5 secend is high\n=>{}%",state.sys.global_cpu_usage());
@@ -126,22 +126,20 @@ pub fn check_disk(state:&mut Systate){
         let montpoint = disk.mount_point().display();
 
         if use_space as f32 >= zone90{
-            if !state.disk_warining_active.load(Ordering::SeqCst){
-                let masssage = format!("storage space filling\n\
-                    disk\ttotal\tusage\tfree\n\
-                    {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
-                    disk.name().to_string_lossy(),
-                    (total as f32 / 1024.0/1024.0/1024.0),
-                    (use_space as f32 /1024.0/1024.0/1024.0),
-                    (free_space as f32 /1024.0/1024.0/1024.0),
-                    montpoint);
-                
-                let body = format!("disk:{},is filling please check",disk.name().to_string_lossy());
-                if !state.disks_fill.contains(&body){
-                    state.disks_fill.push(body);
-                }
-                log_sys!("{}",masssage);
+            let masssage = format!("storage space filling\n\
+                disk\ttotal\tusage\tfree\n\
+                {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
+                disk.name().to_string_lossy(),
+                (total as f32 / 1024.0/1024.0/1024.0),
+                (use_space as f32 /1024.0/1024.0/1024.0),
+                (free_space as f32 /1024.0/1024.0/1024.0),
+                montpoint);
+            
+            let body = format!("disk:{},is filling please check",disk.name().to_string_lossy());
+            if !state.disks_fill.contains(&body){
+                state.disks_fill.push(body);
             }
+            log_sys!("{}",masssage);
         }else {
             // state.disk_warining_active.store(false, Ordering::SeqCst);
         }
@@ -151,7 +149,6 @@ pub fn check_disk(state:&mut Systate){
     if !state.disks_fill.is_empty(){
         if !state.disk_warining_active.load(Ordering::SeqCst){
             state.disks_fill.iter().for_each(|fdisk| {
-                dbg!(fdisk);
                 notif_send!("{}",fdisk);
             });
             state.disk_warining_active.store(true, Ordering::SeqCst);
