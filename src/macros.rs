@@ -1,4 +1,4 @@
-#[macro_export] 
+#[macro_export]
 macro_rules! log_error {
     ($($arg:tt)*) => {
         let _ = $crate::daemon::log::Log::save_log("ERROR", format!($($arg)*));

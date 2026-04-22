@@ -1,69 +1,68 @@
 #[macro_use]
 mod macros;
 
-mod daemon{
+mod daemon {
     pub mod core;
-    pub mod notif;
     pub mod log;
+    pub mod notif;
 }
 
-mod modules{
+mod modules {
     pub mod monitoring;
     pub mod rest;
 }
 
+use crate::modules::monitoring::{self, Systate};
+use crate::modules::rest::start_server;
+use serde::{Deserialize, Serialize};
+use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{env, io, u64};
-use std::fs::{self, File};
-use serde::{Serialize,Deserialize};
 use std::time::Duration;
-use crate::modules::rest::start_server;
-use crate::modules::monitoring::{self, Systate};
+use std::{env, io, u64};
 
 // const FILE_CONF:&str="/tmp/data.json";
-const FILE_DATA_PATH:&str=".config/AEON/config.json";
+const FILE_DATA_PATH: &str = ".config/AEON/config.json";
 
-#[derive(Deserialize,Serialize,Debug)]
-pub struct DataConf{
-    cputsh:Option<f32>,
+#[derive(Deserialize, Serialize, Debug)]
+pub struct DataConf {
+    cputsh: Option<f32>,
 }
 
-fn read_data(path:&PathBuf)-> Option<DataConf>{
-    if !path.exists(){
+fn read_data(path: &PathBuf) -> Option<DataConf> {
+    if !path.exists() {
         File::create(path).expect("Error:can't create config file");
     }
-   let data = fs::read_to_string(path).expect("can't read data as config file");
-   match serde_json::from_str(&data) {
-       Ok(json)=> Some(json),
-       Err(e)=>{
-            eprintln!("Error parsing data config:{}",e);
+    let data = fs::read_to_string(path).expect("can't read data as config file");
+    match serde_json::from_str(&data) {
+        Ok(json) => Some(json),
+        Err(e) => {
+            eprintln!("Error parsing data config:{}", e);
             None
-       }
-   }
+        }
+    }
 }
 
-#[tokio::main]  
+#[tokio::main]
 async fn main() -> io::Result<()> {
     run().await
 }
-async fn run() -> io::Result<()>{
+async fn run() -> io::Result<()> {
     println!("Daemon started...");
 
     let homedir = env::home_dir().expect("Error");
     let path_conf = homedir.join(FILE_DATA_PATH);
-    let conf = read_data(&path_conf).unwrap_or({
-        DataConf{
-            cputsh:Some(80.0),
-        }
-    });
-    
+    let conf = read_data(&path_conf).unwrap_or( DataConf { cputsh: Some(80.0) } );
+
     let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
-    
-    let cputsh = conf.cputsh.ok_or_else(||{
-        eprintln!("Error in read data cpu-treshold");
-        80.0
-    }).expect("Error to convet data cpu-treshold");
+
+    let cputsh = conf
+        .cputsh
+        .ok_or_else(|| {
+            eprintln!("Error in read data cpu-treshold");
+            80.0
+        })
+        .expect("Error to convet data cpu-treshold");
 
     let mut inter100mil = tokio::time::interval(Duration::from_millis(100));
     let mut inter60sec = tokio::time::interval(Duration::from_secs(1));
@@ -78,24 +77,22 @@ async fn run() -> io::Result<()>{
     //     let lisener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
     //     axum::serve(lisener,app).await.unwrap();
     // });
-    
+
     tokio::spawn(start_server(state.clone()));
 
-
     let state_clone = state.clone();
-    let _cpu_swap = tokio::spawn(async move{
-        loop{
-
+    let _cpu_swap = tokio::spawn(async move {
+        loop {
             inter100mil.tick().await;
             let mut state = state_clone.lock().await;
             monitoring::monswap(&mut state).await;
-            monitoring::moncpu(&mut state,cputsh).await;
+            monitoring::moncpu(&mut state, cputsh).await;
             monitoring::check_mem(&mut state).await;
         }
     });
 
     let state_clone = state.clone();
-    let _disk=tokio::spawn(async move{
+    let _disk = tokio::spawn(async move {
         loop {
             inter2sec.tick().await;
             let mut state = state_clone.lock().await;
@@ -103,15 +100,15 @@ async fn run() -> io::Result<()>{
         }
     });
 
-    let _net_handle=tokio::spawn(async move{
-        loop{
+    let _net_handle = tokio::spawn(async move {
+        loop {
             inter60sec.tick().await;
             let _ = monitoring::check_net("8.8.8.8").await;
         }
     });
 
-   let _ =tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
-   Ok(())
+    let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
+    Ok(())
 }
 
 // async fn heath_handle(State(state):State<Arc<tokio::sync::Mutex<Systate>>>)-> String{
