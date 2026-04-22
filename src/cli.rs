@@ -9,13 +9,13 @@ mod modules{
 }
 use clap::{CommandFactory, Parser, Subcommand,ValueEnum};
 use clap_complete::{Shell,generate};
-use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash, str::FromStr};
+use std::{env, fs, io::{self, Write}, path::PathBuf, process::Command as bash};
 use serde::{Serialize,Deserialize};
 use crate::daemon::log::Log;
 
 //consts values
-const CONF_DIR:&str="/tmp/AEON/system";
-const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
+// const CONF_DIR:&str="/tmp/AEON/system";
+// const FILE_DATA_PATH:&str="/tmp/AEON/system/config.json";
 
 //cli conf
 #[derive(Parser)]
@@ -90,10 +90,10 @@ pub struct DataConf{
     cputsh:Option<f32>,
 }
 
-fn get_data(){
-    let path = PathBuf::from_str(FILE_DATA_PATH).expect("Error to convert path");
-    create_dir_conf(&path);
-}
+// fn get_data(){
+//     let path = PathBuf::from_str(FILE_DATA_PATH).expect("Error to convert path");
+//     create_dir_conf(&path);
+// }
 
 fn create_dir_conf(path:&PathBuf){
     let path_dir = path.parent().expect("Error parent");

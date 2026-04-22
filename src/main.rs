@@ -9,7 +9,6 @@ mod daemon{
 
 mod modules{
     pub mod monitoring;
-    pub mod backup;
     pub mod rest;
 }
 
@@ -17,7 +16,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, io, u64};
 use std::fs::{self, File};
-use axum::extract::State;
 use serde::{Serialize,Deserialize};
 use std::time::Duration;
 use crate::modules::rest::start_server;
@@ -100,9 +98,8 @@ async fn run() -> io::Result<()>{
     let _disk=tokio::spawn(async move{
         loop {
             inter2sec.tick().await;
-            let state = state_clone.lock().await;
-            let disks = state.disk.lock().unwrap();
-            monitoring::check_disk(&disks);
+            let mut state = state_clone.lock().await;
+            monitoring::check_disk(&mut state);
         }
     });
 
@@ -116,8 +113,9 @@ async fn run() -> io::Result<()>{
    let _ =tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
    Ok(())
 }
-async fn heath_handle(State(state):State<Arc<tokio::sync::Mutex<Systate>>>)-> String{
-    let state = state.lock().await;
-    let cpu = state.cpu_usage.lock().expect("e");
-    format!("CPU usage:{:.2}%",cpu)
-}
+
+// async fn heath_handle(State(state):State<Arc<tokio::sync::Mutex<Systate>>>)-> String{
+//     let state = state.lock().await;
+//     let cpu = state.cpu_usage.lock().expect("e");
+//     format!("CPU usage:{:.2}%",cpu)
+// }

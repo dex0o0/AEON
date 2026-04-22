@@ -14,6 +14,7 @@ pub struct BackupConfig {
     pub compression_level: u8,
     pub exclude_patterns: Vec<String>,
 }
+
 #[derive(Debug)]
 pub enum CompressionType {
     Gzip,

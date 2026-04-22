@@ -2,19 +2,22 @@ use std::{io,process::Command, sync::{Mutex, atomic::{AtomicBool, Ordering}}, ti
 use sysinfo::{Disks, System};
 
 static NETWORK_IS_UP:AtomicBool=AtomicBool::new(false);
-static DISK_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
 static MEM_WARNING_ACTIVE:AtomicBool=AtomicBool::new(false);
 
 #[derive(Debug)]
 pub struct Systate{
     pub sys:System,
     pub disk:Mutex<Disks>,
+    pub disk_warining_active:AtomicBool,
+    pub disks_fill:Vec<String>,
     pub cpu_usage:Mutex<f32>,
     pub mem_useag:Mutex<f32>,
     pub swap_usage:Mutex<f32>,
     pub cpu_warning_active:AtomicBool,
     pub cpu_warning_start:Mutex<Option<Instant>>,
     pub cpu_100_notif:AtomicBool,
+    pub cpu_100_start:Mutex<Option<Instant>>,
+    
 }
 
 impl Systate {
@@ -28,6 +31,9 @@ impl Systate {
             cpu_warning_active:AtomicBool::new(false),
             cpu_warning_start:Mutex::new(None),
             cpu_100_notif:AtomicBool::new(false),
+            cpu_100_start:Mutex::new(None),
+            disk_warining_active:AtomicBool::new(false),
+            disks_fill:Vec::new(),
         }
     }
 }
@@ -57,11 +63,20 @@ pub async fn moncpu(state:&mut Systate , value:f32){
     drop(cpu);
     //100% send now notify
     if cpu_usage >= 99.0{
-        let already_notifed = state.cpu_100_notif.load(Ordering::SeqCst);
-        if !already_notifed{
-            let massage = format!("oh your CPU max usage:{:.2}%",cpu_usage);
-            notif_log_sys!(massage);
-            state.cpu_100_notif.store(true, Ordering::SeqCst);
+        let mut start_opt = state.cpu_100_start.lock().expect("Error can't lock cpu_100_start");
+        if start_opt.is_none(){
+            *start_opt = Some(Instant::now());
+        }else {
+            let elipsed = start_opt.expect("Error to ger elipsed").elapsed();
+            if elipsed >= Duration::from_secs(3){
+                let already_notifed = state.cpu_100_notif.load(Ordering::SeqCst);
+                
+                if !already_notifed{
+                    let massage = format!("oh your CPU max usage:{:.2}%",cpu_usage);
+                    notif_log_sys!(massage);
+                    state.cpu_100_notif.store(true, Ordering::SeqCst);
+                }
+            }
         }
     }else {
         state.cpu_100_notif.store(false, Ordering::SeqCst);
@@ -99,9 +114,10 @@ pub async fn moncpu(state:&mut Systate , value:f32){
 
 
 //check DISK usage 
-pub fn check_disk(disks:&Disks){
+pub fn check_disk(state:&mut Systate){
     // let disks = Disks::new_with_refreshed_list();
-    disks.iter().for_each(|disk| {
+    
+    state.disk.lock().unwrap().iter().for_each(|disk| {
 
         let total = disk.total_space();
         let free_space = disk.available_space();
@@ -110,7 +126,7 @@ pub fn check_disk(disks:&Disks){
         let montpoint = disk.mount_point().display();
 
         if use_space as f32 >= zone90{
-            if !DISK_WARNING_ACTIVE.load(Ordering::SeqCst){
+            if !state.disk_warining_active.load(Ordering::SeqCst){
                 let masssage = format!("storage space filling\n\
                     disk\ttotal\tusage\tfree\n\
                     {}\t{:.2}G\t{:.2}G\t{:.2}G\t{}",
@@ -119,16 +135,30 @@ pub fn check_disk(disks:&Disks){
                     (use_space as f32 /1024.0/1024.0/1024.0),
                     (free_space as f32 /1024.0/1024.0/1024.0),
                     montpoint);
-
+                
+                let body = format!("disk:{},is filling please check",disk.name().to_string_lossy());
+                if !state.disks_fill.contains(&body){
+                    state.disks_fill.push(body);
+                }
                 log_sys!("{}",masssage);
-                notif_send!("{}",format!("disk:{},is filling please check",disk.name().to_string_lossy()));
-                DISK_WARNING_ACTIVE.store(true, Ordering::SeqCst);
             }
         }else {
-            DISK_WARNING_ACTIVE.store(false, Ordering::SeqCst);
+            // state.disk_warining_active.store(false, Ordering::SeqCst);
         }
 
-    }); 
+    });
+
+    if !state.disks_fill.is_empty(){
+        if !state.disk_warining_active.load(Ordering::SeqCst){
+            state.disks_fill.iter().for_each(|fdisk| {
+                dbg!(fdisk);
+                notif_send!("{}",fdisk);
+            });
+            state.disk_warining_active.store(true, Ordering::SeqCst);
+        }
+    }else {
+        state.disk_warining_active.store(false, Ordering::SeqCst);
+    }
 }
 
 //check MEMORY usage
