@@ -61,6 +61,7 @@ pub async fn monswap(state: &mut Systate) {
         notif_log_sys!(massage);
     }
 }
+
 //check CPU usage
 pub async fn moncpu(state: &mut Systate, value: f32) {
     state.sys.refresh_cpu_usage();
@@ -68,6 +69,7 @@ pub async fn moncpu(state: &mut Systate, value: f32) {
     let mut cpu = state.cpu_usage.lock().expect("E");
     *cpu = cpu_usage;
     drop(cpu);
+
     //100% send now notify
     if cpu_usage >= 99.0 {
         let mut start_opt = state
