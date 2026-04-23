@@ -8,7 +8,7 @@ mod modules {
 }
 use crate::daemon::log::Log;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
-use clap_complete::{Shell, generate};
+use clap_complete::{generate, Shell};
 use serde::{Deserialize, Serialize};
 use std::{
     env, fs,

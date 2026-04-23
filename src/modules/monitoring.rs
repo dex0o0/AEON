@@ -2,8 +2,8 @@ use std::{
     io,
     process::Command,
     sync::{
-        Mutex,
         atomic::{AtomicBool, Ordering},
+        Mutex,
     },
     time::{Duration, Instant},
 };
@@ -200,6 +200,23 @@ pub async fn check_mem(state: &mut Systate) {
     }
 }
 
+/// <center><h1>Ping function</h1></center>
+/// <hr/>
+/// <br/>
+/// <h5>Ping with</h5>
+/// <br/>
+/// unix command "ping 8.8.8.8"
+///
+/// you can use this function to other file
+///```
+///check_net("<ip address>").await;
+///```
+/// <h2>for example</h2>
+///
+/// ```
+/// check_net("8.8.8.8").await;
+/// ```
+#[cfg(unix)]
 pub async fn check_net(ip: &str) -> io::Result<()> {
     let ping = Command::new("ping").args(["-W 5", "-c 1", ip]).output();
     match ping {

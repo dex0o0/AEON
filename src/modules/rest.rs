@@ -1,25 +1,37 @@
 use crate::monitoring::Systate;
-use axum::{Json, Router, extract::State, http::HeaderValue, routing::get};
-use serde_json::{Value, json};
+use axum::{extract::State, http::HeaderValue, routing::get, Json, Router};
+use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 pub async fn start_server(stated: Arc<tokio::sync::Mutex<Systate>>) {
     tokio::spawn(async move {
+        //get free port
+        //and
+        //HeaderValue
+        let free_port = get_open_port(3000, 200).await;
+        let r = format!("http://127.0.0.1:{}", free_port);
+
         let cors = CorsLayer::new()
-            .allow_origin(AllowOrigin::exact(HeaderValue::from_static(
-                "http://127.0.0.1:3000",
-            )))
+            .allow_origin(AllowOrigin::exact(
+                HeaderValue::from_str(&r)
+                    .unwrap_or_else(|_| HeaderValue::from_static("http://127.0.0.1:3000")),
+            ))
             .allow_methods([axum::http::Method::GET]);
+
         let app = Router::new()
             .route("/status", get(status_handle))
             .layer(cors)
             .with_state(stated);
 
-        let lisener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+        let lisener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", free_port))
             .await
-            .unwrap();
+            .expect("Failed to created tcp listener");
+
+        //this is for debuging.
+        //
+        dbg!(free_port, &lisener);
 
         axum::serve(lisener, app).await.unwrap();
     });
@@ -74,4 +86,28 @@ async fn status_handle(State(state): State<Arc<tokio::sync::Mutex<Systate>>>) ->
         "disks":*disks,
         "timestamp":chrono::Local::now().to_rfc3339(),
     }))
+}
+
+///<h1>---Get_Open_Port---</h1>
+///<h4>read and found open and free port on your system</h4>
+///
+///<h3>by example</h3>
+///```
+///get_open_port(/* s:start_point, t:next_range */);
+///
+///```
+///```
+///get_open_port(3000,200);
+///```
+#[allow(dead_code)]
+async fn get_open_port(s: u32, t: u32) -> u32 {
+    for port in s..=(s + t) {
+        if tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
+            .await
+            .is_ok()
+        {
+            return port;
+        }
+    }
+    panic!("no free port found range 0..65000");
 }

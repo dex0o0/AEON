@@ -43,16 +43,18 @@ fn read_data(path: &PathBuf) -> Option<DataConf> {
     }
 }
 
+//MAIN function
 #[tokio::main]
 async fn main() -> io::Result<()> {
     run().await
 }
+
 async fn run() -> io::Result<()> {
     println!("Daemon started...");
 
     let homedir = env::home_dir().expect("Error");
     let path_conf = homedir.join(FILE_DATA_PATH);
-    let conf = read_data(&path_conf).unwrap_or( DataConf { cputsh: Some(80.0) } );
+    let conf = read_data(&path_conf).unwrap_or(DataConf { cputsh: Some(80.0) });
 
     let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
 
