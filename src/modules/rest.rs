@@ -34,6 +34,9 @@ pub async fn start_server(stated: Arc<tokio::sync::Mutex<Systate>>) {
         dbg!(free_port, &lisener);
 
         axum::serve(lisener, app).await.unwrap();
+
+        use crate::daemon::core::test;
+        let _ = test();
     });
 }
 
