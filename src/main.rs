@@ -13,8 +13,7 @@ mod modules {
 }
 
 use crate::modules::monitoring::{self, Icpu, Idisks, Systate};
-use crate::modules::rest::start_server;
-use libc::iconv_close;
+use crate::modules::rest::{rest_run, start_server};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -83,7 +82,7 @@ async fn run() -> io::Result<()> {
     //     axum::serve(lisener,app).await.unwrap();
     // });
 
-    tokio::spawn(start_server(state.clone()));
+    tokio::spawn(rest_run());
 
     let state_clone = state.clone();
     let icpu_clone = icpu.clone();
@@ -95,6 +94,14 @@ async fn run() -> io::Result<()> {
             monitoring::monswap(&mut state).await;
             monitoring::moncpu(&mut state, &mut icpu, cputsh).await;
             monitoring::check_mem(&mut state).await;
+        }
+    });
+
+    tokio::spawn(async {
+        loop {
+            let _ = daemon::core::test(3000u32).await;
+            let _ = tokio::time::sleep(Duration::from_millis(200)).await;
+            let _ = std::process::Command::new("clear").spawn();
         }
     });
 

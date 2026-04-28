@@ -1,20 +1,21 @@
-// #[allow(unused_imports)]
-// use std::io::{Read, Write};
-// #[allow(unused_imports)]
-// use std::net::TcpStream;
-//
-//
-// pub fn test() -> Result<(), Box<dyn std::error::Error>> {
-//     let mut stream = TcpStream::connect("127.0.0.1:3001")?;  // پورت رو عوض کن
-//     let request = "GET /status HTTP/1.1\r\nHost: localhost\r\n\r\n";
-//     stream.write_all(request.as_bytes())?;
-//
-//     let mut response = String::new();
-//     stream.read_to_string(&mut response)?;
-//
-//     println!("Response:\n{:?}", response);  // با println چاپ کن
-//     // اگه می‌خوای با dbg ببینی:
-//     // dbg!(&response);
-//
-//     Ok(())
-// }
+#[allow(unused_imports)]
+use std::io::{Read, Write};
+#[allow(unused_imports)]
+use std::net::TcpStream;
+
+pub async fn test(port: u32) -> Result<(), Box<dyn std::error::Error>> {
+    let url = format!("http://127.0.0.1:{}/status", port);
+
+    let response = reqwest::get(&url).await?;
+
+    let json_data: serde_json::Value = response.json().await?;
+
+    if let Some(cpu) = json_data["cpu"]["usage_percent"].as_f64() {
+        println!("CPU Usage:{:.2}", cpu);
+    }
+    if let Some(mem) = json_data["memory"]["usage_percent"].as_f64() {
+        println!("MEM Usage:{:.2}", mem);
+    }
+
+    Ok(())
+}

@@ -1,11 +1,35 @@
-use crate::monitoring::Systate;
+use crate::{
+    modules::monitoring::{Icpu, Idisks},
+    monitoring::Systate,
+};
 use axum::{extract::State, http::HeaderValue, routing::get, Json, Router};
 use serde_json::{json, Value};
-use std::sync::Arc;
-use tokio;
+use std::{sync::Arc, time::Duration};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
-pub async fn start_server(stated: Arc<tokio::sync::Mutex<Systate>>) {
+pub struct AppState {
+    pub state: Arc<tokio::sync::Mutex<Systate>>,
+    pub idisk: Arc<tokio::sync::Mutex<Idisks>>,
+    pub icpu: Arc<tokio::sync::Mutex<Icpu>>,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            state: Arc::new(tokio::sync::Mutex::new(Systate::new())),
+            idisk: Arc::new(tokio::sync::Mutex::new(Idisks::new())),
+            icpu: Arc::new(tokio::sync::Mutex::new(Icpu::new())),
+        }
+    }
+}
+
+pub async fn rest_run() {
+    let app = AppState::new();
+    let _ = start_server(app).await;
+    tokio::time::sleep(Duration::from_secs(1));
+}
+
+pub async fn start_server(app: AppState) {
     tokio::spawn(async move {
         //get free port
         //and
@@ -23,7 +47,7 @@ pub async fn start_server(stated: Arc<tokio::sync::Mutex<Systate>>) {
         let app = Router::new()
             .route("/status", get(status_handle))
             .layer(cors)
-            .with_state(stated);
+            .with_state(Arc::new(app));
 
         let lisener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", free_port))
             .await
@@ -34,20 +58,15 @@ pub async fn start_server(stated: Arc<tokio::sync::Mutex<Systate>>) {
         dbg!(free_port, &lisener);
 
         axum::serve(lisener, app).await.unwrap();
-
-        use crate::daemon::core::test;
-        let _ = test();
     });
 }
 
-async fn status_handle(State(state): State<Arc<tokio::sync::Mutex<Systate>>>) -> Json<Value> {
-    let state = state.lock().await;
+async fn status_handle(State(appstate): State<Arc<AppState>>) -> Json<Value> {
+    let icpu = appstate.icpu.lock().await;
+    let state = appstate.state.lock().await;
+    let idisk = appstate.idisk.lock().await;
 
-    let cpu = *state.cpu_usage.lock().unwrap();
-    let mem = *state.mem_useag.lock().unwrap();
-    let swap = *state.swap_usage.lock().unwrap();
-
-    let disks: Vec<Value> = state
+    let disks: Vec<Value> = idisk
         .disk
         .lock()
         .unwrap()
@@ -76,17 +95,17 @@ async fn status_handle(State(state): State<Arc<tokio::sync::Mutex<Systate>>>) ->
 
     Json(json!({
         "cpu":{
-            "usage_percent":cpu,
-            "status":if cpu > 80.0 {"warning"} else {"normal"},
+            "usage_percent": *icpu.cpu_usage.lock().unwrap(),
+            "status":if *icpu.cpu_usage.lock().unwrap() > 80.0 {"warning"} else {"normal"},
         },
         "memory":{
-            "usage_percent":mem,
-            "status":if mem > 80.0 {"warning"} else {"normal"},
+            "usage_percent": *state.mem_useag.lock().unwrap(),
+            "status":if *state.mem_useag.lock().unwrap() >= 80.0 {"warning"} else {"normal"},
         },
         "swap":{
-            "usage_percent":swap,
+            "usage_percent": *state.swap_usage.lock().unwrap(),
         },
-        "disks":*disks,
+        "disks": *disks,
         "timestamp":chrono::Local::now().to_rfc3339(),
     }))
 }
