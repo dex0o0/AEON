@@ -12,8 +12,9 @@ mod modules {
     pub mod rest;
 }
 
-use crate::modules::monitoring::{self, Systate};
+use crate::modules::monitoring::{self, Icpu, Idisks, Systate};
 use crate::modules::rest::start_server;
+use libc::iconv_close;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -57,6 +58,8 @@ async fn run() -> io::Result<()> {
     let conf = read_data(&path_conf).unwrap_or(DataConf { cputsh: Some(80.0) });
 
     let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
+    let idisk = Arc::new(tokio::sync::Mutex::new(Idisks::new()));
+    let icpu = Arc::new(tokio::sync::Mutex::new(Icpu::new()));
 
     let cputsh = conf
         .cputsh
@@ -83,22 +86,24 @@ async fn run() -> io::Result<()> {
     tokio::spawn(start_server(state.clone()));
 
     let state_clone = state.clone();
+    let icpu_clone = icpu.clone();
     let _cpu_swap = tokio::spawn(async move {
         loop {
             inter100mil.tick().await;
             let mut state = state_clone.lock().await;
+            let mut icpu = icpu_clone.lock().await;
             monitoring::monswap(&mut state).await;
-            monitoring::moncpu(&mut state, cputsh).await;
+            monitoring::moncpu(&mut state, &mut icpu, cputsh).await;
             monitoring::check_mem(&mut state).await;
         }
     });
 
-    let state_clone = state.clone();
+    let idisks_clone = idisk.clone();
     let _disk = tokio::spawn(async move {
         loop {
             inter2sec.tick().await;
-            let mut state = state_clone.lock().await;
-            monitoring::check_disk(&mut state);
+            let mut idisks = idisks_clone.lock().await;
+            monitoring::check_disk(&mut idisks);
         }
     });
 
