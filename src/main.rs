@@ -12,14 +12,15 @@ mod modules {
     pub mod rest;
 }
 
-use crate::modules::monitoring::{self, Icpu, Idisks, Systate};
-use crate::modules::rest::{rest_run, start_server};
+use crate::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
+use crate::modules::rest::rest_run;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, io, u64};
+use sysinfo::Process;
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
@@ -99,7 +100,7 @@ async fn run() -> io::Result<()> {
 
     tokio::spawn(async {
         loop {
-            let _ = daemon::core::test(3000u32).await;
+            // let _ = daemon::core::test(3000u32).await;
             let _ = tokio::time::sleep(Duration::from_millis(200)).await;
             let _ = std::process::Command::new("clear").spawn();
         }
@@ -121,6 +122,17 @@ async fn run() -> io::Result<()> {
         }
     });
 
+    let proc_watcher = Arc::new(ProcessWatcher::new());
+    let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
+    let state_for_proc = state.clone();
+    let watcher_for_proc = proc_watcher.clone();
+    tokio::spawn(async move {
+        loop {
+            inter_proc.tick().await;
+            let mut state = state_for_proc.lock().await;
+            scan_processes(&mut state, &watcher_for_proc);
+        }
+    });
     let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
     Ok(())
 }

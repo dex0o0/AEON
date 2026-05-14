@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io,
     process::Command,
     sync::{
@@ -278,4 +279,85 @@ pub async fn check_net(ip: &str) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[derive(Debug, Clone)]
+pub struct Process {
+    pub pid: u32,
+    pub name: String,
+    pub cpu_usage: f32,
+    pub mem_usage: f64,
+    pub run_time: u64,
+    pub first_seen: Instant,
+}
+
+#[derive(Debug)]
+pub struct ProcessWatcher {
+    pub tracked_processes: Mutex<HashMap<u32, Process>>,
+    pub cpu_threshold: f32,
+    pub mem_threshold: f64,
+    pub time_threshold: u64,
+    pub warning_active: AtomicBool,
+}
+
+impl ProcessWatcher {
+    pub fn new() -> Self {
+        Self {
+            tracked_processes: Mutex::new(HashMap::new()),
+            cpu_threshold: 80.0,
+            mem_threshold: 1024.0,
+            time_threshold: 300,
+            warning_active: AtomicBool::new(false),
+        }
+    }
+}
+
+pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
+    state.sys.refresh_all();
+
+    let processes = state.sys.processes();
+    let mut tracked = watcher.tracked_processes.lock().unwrap();
+    let now = Instant::now();
+
+    // tracked.retain(|pid, _| processes.contains_key(pid));
+
+    processes.iter().for_each(|(pid, process)| {
+        let cpu = process.cpu_usage();
+        let mem = process.memory() as f64 / (1024.0 * 1024.0);
+        let name = process.name().to_string_lossy().to_string();
+
+        let is_suspicious = cpu > watcher.cpu_threshold || mem > watcher.mem_threshold;
+
+        if is_suspicious {
+            if let Some(exiting) = tracked.get(&pid.as_u32()) {
+                // latter
+            } else {
+                tracked.insert(
+                    pid.as_u32(),
+                    Process {
+                        pid: pid.as_u32(),
+                        name: name.clone(),
+                        cpu_usage: cpu,
+                        mem_usage: mem,
+                        run_time: 0,
+                        first_seen: now,
+                    },
+                );
+                let msg = format!(
+                    "Suspicious process detected\n\
+                Name:{}\n\
+                PID:{}\n\
+                CPU:{:.2}%\n\
+                Memory:{:.2}MB",
+                    name, pid, cpu, mem
+                );
+                notif_log_sys!(msg);
+            }
+        } else {
+            if tracked.remove(&pid.as_u32()).is_some() {
+                let msg = format!("Process {} PID {} is now normal", name, pid);
+                notif_log_sys!(msg);
+            }
+        }
+    });
 }
