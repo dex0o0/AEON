@@ -113,6 +113,8 @@ pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
                 }
             }
         }
+    } else {
+        icpu.cpu_100_notif.store(false, Ordering::SeqCst);
     }
 
     //if CPU usage for 5sec > value notify warning
