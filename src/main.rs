@@ -20,7 +20,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, io, u64};
-use sysinfo::Process;
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
@@ -122,17 +121,17 @@ async fn run() -> io::Result<()> {
         }
     });
 
-    let proc_watcher = Arc::new(ProcessWatcher::new());
-    let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
-    let state_for_proc = state.clone();
-    let watcher_for_proc = proc_watcher.clone();
-    tokio::spawn(async move {
-        loop {
-            inter_proc.tick().await;
-            let mut state = state_for_proc.lock().await;
-            scan_processes(&mut state, &watcher_for_proc);
-        }
-    });
+    // let proc_watcher = Arc::new(ProcessWatcher::new());
+    // let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
+    // let state_for_proc = state.clone();
+    // let watcher_for_proc = proc_watcher.clone();
+    // tokio::spawn(async move {
+    //     loop {
+    //         inter_proc.tick().await;
+    //         let mut state = state_for_proc.lock().await;
+    //         scan_processes(&mut state, &watcher_for_proc);
+    //     }
+    // });
     let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
     Ok(())
 }
