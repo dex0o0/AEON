@@ -13,7 +13,7 @@ mod modules {
 }
 
 use crate::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
-use crate::modules::rest::rest_run;
+use crate::modules::rest::{rest_run, AppState};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
@@ -69,7 +69,7 @@ async fn run() -> io::Result<()> {
         .expect("Error to convet data cpu-treshold");
 
     let mut inter100mil = tokio::time::interval(Duration::from_millis(100));
-    let mut inter60sec = tokio::time::interval(Duration::from_secs(1));
+    let mut inter1sec = tokio::time::interval(Duration::from_secs(1));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
 
     // let state_for_serv = state.clone();
@@ -81,8 +81,12 @@ async fn run() -> io::Result<()> {
     //     let lisener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
     //     axum::serve(lisener,app).await.unwrap();
     // });
-
-    tokio::spawn(rest_run());
+    let app_state = AppState {
+        state: state.clone(),
+        idisk: idisk.clone(),
+        icpu: icpu.clone(),
+    };
+    tokio::spawn(rest_run(app_state));
 
     let state_clone = state.clone();
     let icpu_clone = icpu.clone();
@@ -97,14 +101,6 @@ async fn run() -> io::Result<()> {
         }
     });
 
-    tokio::spawn(async {
-        loop {
-            // let _ = daemon::core::test(3000u32).await;
-            let _ = tokio::time::sleep(Duration::from_millis(200)).await;
-            let _ = std::process::Command::new("clear").spawn();
-        }
-    });
-
     let idisks_clone = idisk.clone();
     let _disk = tokio::spawn(async move {
         loop {
@@ -116,7 +112,7 @@ async fn run() -> io::Result<()> {
 
     let _net_handle = tokio::spawn(async move {
         loop {
-            inter60sec.tick().await;
+            inter1sec.tick().await;
             let _ = monitoring::check_net("8.8.8.8").await;
         }
     });

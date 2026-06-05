@@ -23,10 +23,9 @@ impl AppState {
     }
 }
 
-pub async fn rest_run() {
-    let app = AppState::new();
-    let _ = start_server(app).await;
-    tokio::time::sleep(Duration::from_secs(1));
+pub async fn rest_run(app: AppState) {
+    start_server(app).await;
+    let _ = tokio::time::sleep(Duration::from_secs(1)).await;
 }
 
 pub async fn start_server(app: AppState) {
