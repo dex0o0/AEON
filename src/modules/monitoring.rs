@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::{
     collections::HashMap,
     io,
@@ -298,6 +299,7 @@ pub struct ProcessWatcher {
     pub mem_threshold: f64,
     pub time_threshold: u64,
     pub warning_active: AtomicBool,
+    pub is_first_run: AtomicBool,
 }
 
 impl ProcessWatcher {
@@ -308,28 +310,35 @@ impl ProcessWatcher {
             mem_threshold: 1024.0,
             time_threshold: 300,
             warning_active: AtomicBool::new(false),
+            is_first_run: AtomicBool::new(true),
         }
     }
 }
 
-pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
+pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_threshhold: f32) {
+    let is_first = watcher.is_first_run.swap(false, Ordering::SeqCst);
+
     state.sys.refresh_all();
+
+    if is_first {
+        return;
+    }
 
     let processes = state.sys.processes();
     let mut tracked = watcher.tracked_processes.lock().unwrap();
     let now = Instant::now();
 
-    // tracked.retain(|pid, _| processes.contains_key(pid));
+    tracked.retain(|pid, _| processes.contains_key(&sysinfo::Pid::from(*pid as usize)));
 
     processes.iter().for_each(|(pid, process)| {
         let cpu = process.cpu_usage();
         let mem = process.memory() as f64 / (1024.0 * 1024.0);
         let name = process.name().to_string_lossy().to_string();
 
-        let is_suspicious = cpu > watcher.cpu_threshold || mem > watcher.mem_threshold;
+        let is_suspicious = cpu > custom_cpu_threshhold || mem > watcher.mem_threshold;
 
         if is_suspicious {
-            if let Some(exiting) = tracked.get(&pid.as_u32()) {
+            if let Some(_exiting) = tracked.get(&pid.as_u32()) {
                 // latter
             } else {
                 tracked.insert(
