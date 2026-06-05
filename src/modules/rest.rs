@@ -33,7 +33,7 @@ pub async fn start_server(app: AppState) {
         //get free port
         //and
         //HeaderValue
-        let (free_port, listener) = get_open_port(3000, 200).await;
+        let (free_port, listener) = get_free_port(3000, 200).await;
         let r = format!("http://127.0.0.1:{}", free_port);
 
         let cors = CorsLayer::new()
@@ -109,19 +109,19 @@ async fn status_handle(State(appstate): State<Arc<AppState>>) -> Json<Value> {
     }))
 }
 
-///<h1>---Get_Open_Port---</h1>
-///<h4>read and found open and free port on your system</h4>
+///<h1>---Get_free_Port---</h1>
+///<h4>read and found free and free port on your system</h4>
 ///
 ///<h3>by example</h3>
 ///```
-///get_open_port(/* s:start_point, t:next_range */);
+///get_free_port(/* s:start_point, t:next_range */);
 ///
 ///```
 ///```
-///get_open_port(3000,200);
+///get_free_port(3000,200);
 ///```
 #[allow(dead_code)]
-async fn get_open_port(s: u32, t: u32) -> (u32, tokio::net::TcpListener) {
+async fn get_free_port(s: u32, t: u32) -> (u32, tokio::net::TcpListener) {
     for port in s..=(s + t) {
         if let Ok(listener) = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port)).await {
             return (port, listener);
