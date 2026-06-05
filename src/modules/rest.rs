@@ -33,7 +33,7 @@ pub async fn start_server(app: AppState) {
         //get free port
         //and
         //HeaderValue
-        let free_port = get_open_port(3000, 200).await;
+        let (free_port, listener) = get_open_port(3000, 200).await;
         let r = format!("http://127.0.0.1:{}", free_port);
 
         let cors = CorsLayer::new()
@@ -48,15 +48,15 @@ pub async fn start_server(app: AppState) {
             .layer(cors)
             .with_state(Arc::new(app));
 
-        let lisener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", free_port))
-            .await
-            .expect("Failed to created tcp listener");
+        // let lisener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", free_port))
+        //     .await
+        //     .expect("Failed to created tcp listener");
 
         //this is for debuging.
         //
-        dbg!(free_port, &lisener);
+        dbg!(free_port, &listener);
 
-        axum::serve(lisener, app).await.unwrap();
+        axum::serve(listener, app).await.unwrap();
     });
 }
 
@@ -121,13 +121,10 @@ async fn status_handle(State(appstate): State<Arc<AppState>>) -> Json<Value> {
 ///get_open_port(3000,200);
 ///```
 #[allow(dead_code)]
-async fn get_open_port(s: u32, t: u32) -> u32 {
+async fn get_open_port(s: u32, t: u32) -> (u32, tokio::net::TcpListener) {
     for port in s..=(s + t) {
-        if tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
-            .await
-            .is_ok()
-        {
-            return port;
+        if let Ok(listener) = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port)).await {
+            return (port, listener);
         }
     }
     panic!("no free port found range 0..65000");
