@@ -69,7 +69,7 @@ async fn run() -> io::Result<()> {
         .expect("Error to convet data cpu-treshold");
 
     let mut inter100mil = tokio::time::interval(Duration::from_millis(100));
-    let mut inter1sec = tokio::time::interval(Duration::from_secs(1));
+    let mut inter60sec = tokio::time::interval(Duration::from_secs(60));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
 
     // let state_for_serv = state.clone();
@@ -112,7 +112,7 @@ async fn run() -> io::Result<()> {
 
     let _net_handle = tokio::spawn(async move {
         loop {
-            inter1sec.tick().await;
+            inter60sec.tick().await;
             let _ = monitoring::check_net("8.8.8.8").await;
         }
     });
