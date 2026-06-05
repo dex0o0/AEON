@@ -117,17 +117,18 @@ async fn run() -> io::Result<()> {
         }
     });
 
-    // let proc_watcher = Arc::new(ProcessWatcher::new());
-    // let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
-    // let state_for_proc = state.clone();
-    // let watcher_for_proc = proc_watcher.clone();
-    // tokio::spawn(async move {
-    //     loop {
-    //         inter_proc.tick().await;
-    //         let mut state = state_for_proc.lock().await;
-    //         scan_processes(&mut state, &watcher_for_proc);
-    //     }
-    // });
+    let proc_watcher = Arc::new(ProcessWatcher::new());
+    let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
+    let state_for_proc = state.clone();
+    let watcher_for_proc = proc_watcher.clone();
+
+    tokio::spawn(async move {
+        loop {
+            inter_proc.tick().await;
+            let mut state = state_for_proc.lock().await;
+            scan_processes(&mut state, &watcher_for_proc, conf.cputsh.unwrap_or(80.0));
+        }
+    });
     let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
     Ok(())
 }
