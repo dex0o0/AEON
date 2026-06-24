@@ -303,7 +303,7 @@ impl ProcessWatcher {
         Self {
             tracked_processes: Mutex::new(HashMap::new()),
             cpu_threshold: 80.0,
-            mem_threshold: 1024.0 * 5.0,
+            mem_threshold: 1024.0 * 1024.0 * 5.0,
             time_threshold: 300,
             warning_active: AtomicBool::new(false),
             is_first_run: AtomicBool::new(true),
@@ -330,11 +330,14 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
 
     processes.iter().for_each(|(pid, process)| {
         let raw_cpu = process.cpu_usage();
-        let cpu = raw_cpu / num_cores;
-        let mem = process.memory() as f64 / (1024.0 * 1024.0);
+        let cpu = is_overhead_cpu(raw_cpu, num_cores);
+        let mem = process.memory() as f64 / 1024.0;
+        // dbg!(mem, watcher.mem_threshold);
+        // dbg!(raw_cpu, num_cores, cpu);
+
         let name = process.name().to_string_lossy().to_string();
 
-        let is_suspicious = cpu > custom_cpu_threshhold || mem > watcher.mem_threshold;
+        let is_suspicious = cpu.status || mem > watcher.mem_threshold;
         // dbg!(
         //     mem,
         //     watcher.mem_threshold,
@@ -345,32 +348,50 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
         if is_suspicious {
             if let Some(existing) = tracked.get_mut(&pid.as_u32()) {
                 // latter
-                existing.cpu_usage = cpu;
+                existing.cpu_usage = cpu.value;
                 existing.mem_usage = mem;
 
                 existing.run_time = now.duration_since(existing.first_seen).as_secs();
+                if existing.run_time >= watcher.time_threshold {
+                    let msg = format!(
+                        "Suspicious process detected\n\
+                        Name:{}\n\
+                        PID:{}\n\
+                        CPU:{:.2}%\n\
+                        Memory:{:.2}MB",
+                        name,
+                        pid,
+                        cpu.value,
+                        mem / 1024.0
+                    );
+                    notif_log_sys!(msg);
+                    log_sys!("{}", msg);
+                }
             } else {
                 tracked.insert(
                     pid.as_u32(),
                     Process {
                         pid: pid.as_u32(),
                         name: name.clone(),
-                        cpu_usage: cpu,
+                        cpu_usage: cpu.value,
                         mem_usage: mem,
                         run_time: 0,
                         first_seen: now,
                     },
                 );
-                let msg = format!(
-                    "Suspicious process detected\n\
-                Name:{}\n\
-                PID:{}\n\
-                CPU:{:.2}%\n\
-                Memory:{:.2}MB",
-                    name, pid, cpu, mem
-                );
-                // notif_log_sys!(msg);
-                log_sys!("{}", msg);
+                // let msg = format!(
+                //     "Suspicious process detected\n\
+                // Name:{}\n\
+                // PID:{}\n\
+                // CPU:{:.2}%\n\
+                // Memory:{:.2}MB",
+                //     name,
+                //     pid,
+                //     cpu.value,
+                //     mem / 1024.0
+                // );
+                // // notif_log_sys!(msg);
+                // log_sys!("{}", msg);
             }
         } else {
             if tracked.remove(&pid.as_u32()).is_some() {
@@ -381,4 +402,34 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
             }
         }
     });
+}
+
+struct IsOverheadCpu {
+    value: f32,
+    status: bool,
+}
+
+fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {
+    if raw_core == 0.0 {
+        return IsOverheadCpu {
+            value: raw_core,
+            status: false,
+        };
+    }
+
+    let total_cpu_usage = raw_core / num_core;
+
+    // println!("{:.2}/{:.2}= {:.2}", raw_core, num_core, &total_cpu_usage);
+
+    if total_cpu_usage > 80.0 {
+        IsOverheadCpu {
+            value: total_cpu_usage,
+            status: true,
+        }
+    } else {
+        IsOverheadCpu {
+            value: total_cpu_usage,
+            status: false,
+        }
+    }
 }
