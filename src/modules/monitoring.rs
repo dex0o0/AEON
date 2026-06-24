@@ -113,10 +113,7 @@ pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
                 }
             }
         }
-    } else {
-        icpu.cpu_100_notif.store(false, Ordering::SeqCst);
     }
-
     //if CPU usage for 5sec > value notify warning
     if cpu_usage > value {
         let mut start_opt = icpu
@@ -306,7 +303,7 @@ impl ProcessWatcher {
         Self {
             tracked_processes: Mutex::new(HashMap::new()),
             cpu_threshold: 80.0,
-            mem_threshold: 1024.0,
+            mem_threshold: 1024.0 * 5.0,
             time_threshold: 300,
             warning_active: AtomicBool::new(false),
             is_first_run: AtomicBool::new(true),
@@ -327,18 +324,31 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
     let mut tracked = watcher.tracked_processes.lock().unwrap();
     let now = Instant::now();
 
-    tracked.retain(|pid, _| processes.contains_key(&sysinfo::Pid::from(*pid as usize)));
+    tracked.retain(|pid, _| processes.keys().any(|p| p.as_u32() == *pid));
+
+    let num_cores = state.sys.cpus().len() as f32;
 
     processes.iter().for_each(|(pid, process)| {
-        let cpu = process.cpu_usage();
+        let raw_cpu = process.cpu_usage();
+        let cpu = raw_cpu / num_cores;
         let mem = process.memory() as f64 / (1024.0 * 1024.0);
         let name = process.name().to_string_lossy().to_string();
 
         let is_suspicious = cpu > custom_cpu_threshhold || mem > watcher.mem_threshold;
-
+        // dbg!(
+        //     mem,
+        //     watcher.mem_threshold,
+        //     mem,
+        //     watcher.mem_threshold,
+        //     raw_cpu
+        // );
         if is_suspicious {
-            if let Some(_exiting) = tracked.get(&pid.as_u32()) {
+            if let Some(existing) = tracked.get_mut(&pid.as_u32()) {
                 // latter
+                existing.cpu_usage = cpu;
+                existing.mem_usage = mem;
+
+                existing.run_time = now.duration_since(existing.first_seen).as_secs();
             } else {
                 tracked.insert(
                     pid.as_u32(),
@@ -359,12 +369,15 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
                 Memory:{:.2}MB",
                     name, pid, cpu, mem
                 );
-                notif_log_sys!(msg);
+                // notif_log_sys!(msg);
+                log_sys!("{}", msg);
             }
         } else {
             if tracked.remove(&pid.as_u32()).is_some() {
-                let msg = format!("Process {} PID {} is now normal", name, pid);
-                notif_log_sys!(msg);
+                let msg = format!(" {} PID {} is now normal", name, pid);
+                // notif_log_sys!(msg);
+                log_sys!("Process:{}", msg);
+                // dbg!(msg);
             }
         }
     });
