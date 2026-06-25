@@ -364,7 +364,7 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
                         cpu.value,
                         mem / 1024.0
                     );
-                    notif_log_sys!(msg);
+                    // notif_log_sys!(msg);
                     log_sys!("{}", msg);
                 }
             } else {
