@@ -1,20 +1,9 @@
 #[macro_use]
 mod macros;
 
-// mod daemon {
-//     pub mod core;
-//     pub mod log;
-//     pub mod notif;
-// }
-//
-// mod modules {
-//     pub mod monitoring;
-// }
-//
 use aeon::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
 mod cli;
 use cli::DataConf;
-// use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,12 +13,6 @@ use std::{env, io, u64};
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
 
-// #[derive(Deserialize, Serialize, Debug)]
-// pub struct DataConf {
-//     cputsh: Option<f32>,
-// }
-//
-//
 fn read_data(path: &PathBuf) -> Option<DataConf> {
     if !path.exists() {
         File::create(path).expect("Error:can't create config file");
@@ -57,9 +40,9 @@ async fn run() -> io::Result<()> {
     let path_conf = homedir.join(FILE_DATA_PATH);
     let conf = read_data(&path_conf).unwrap_or(DataConf { cputsh: Some(80.0) });
 
-    let state = Arc::new(tokio::sync::Mutex::new(Systate::new()));
-    let idisk = Arc::new(tokio::sync::Mutex::new(Idisks::new()));
-    let icpu = Arc::new(tokio::sync::Mutex::new(Icpu::new()));
+    let state = Arc::new(tokio::sync::Mutex::new(Systate::default()));
+    let idisk = Arc::new(tokio::sync::Mutex::new(Idisks::default()));
+    let icpu = Arc::new(tokio::sync::Mutex::new(Icpu::default()));
 
     let cputsh = conf
         .cputsh
@@ -73,15 +56,6 @@ async fn run() -> io::Result<()> {
     let mut inter60sec = tokio::time::interval(Duration::from_secs(60));
     let mut inter2sec = tokio::time::interval(Duration::from_secs(2));
 
-    // let state_for_serv = state.clone();
-    // tokio::spawn(async move {
-    //     let app = Router::new()
-    //         .route("/health", get(heath_handle))
-    //         .layer(CorsLayer::very_permissive())
-    //         .with_state(state_for_serv);
-    //     let lisener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
-    //     axum::serve(lisener,app).await.unwrap();
-    // });
     let state_clone = state.clone();
     let icpu_clone = icpu.clone();
     let _cpu_swap = tokio::spawn(async move {
@@ -111,7 +85,7 @@ async fn run() -> io::Result<()> {
         }
     });
 
-    let proc_watcher = Arc::new(ProcessWatcher::new());
+    let proc_watcher = Arc::new(ProcessWatcher::default());
     let mut inter_proc = tokio::time::interval(Duration::from_secs(10));
     let state_for_proc = state.clone();
     let watcher_for_proc = proc_watcher.clone();
@@ -120,15 +94,9 @@ async fn run() -> io::Result<()> {
         loop {
             inter_proc.tick().await;
             let mut state = state_for_proc.lock().await;
-            scan_processes(&mut state, &watcher_for_proc, conf.cputsh.unwrap_or(80.0));
+            scan_processes(&mut state, &watcher_for_proc);
         }
     });
     let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
     Ok(())
 }
-
-// async fn heath_handle(State(state):State<Arc<tokio::sync::Mutex<Systate>>>)-> String{
-//     let state = state.lock().await;
-//     let cpu = state.cpu_usage.lock().expect("e");
-//     format!("CPU usage:{:.2}%",cpu)
-// }

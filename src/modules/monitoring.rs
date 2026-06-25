@@ -36,8 +36,8 @@ pub struct Systate {
     pub swap_usage: Mutex<f32>,
 }
 
-impl Icpu {
-    pub fn new() -> Self {
+impl Default for Icpu {
+    fn default() -> Self {
         Self {
             cpu_usage: Mutex::new(0.0),
             cpu_warning_active: AtomicBool::new(false),
@@ -48,8 +48,8 @@ impl Icpu {
     }
 }
 
-impl Systate {
-    pub fn new() -> Self {
+impl Default for Systate {
+    fn default() -> Self {
         Self {
             sys: System::new_all(),
             mem_useag: Mutex::new(0.0),
@@ -58,8 +58,8 @@ impl Systate {
     }
 }
 
-impl Idisks {
-    pub fn new() -> Self {
+impl Default for Idisks {
+    fn default() -> Self {
         Self {
             disk: Mutex::new(Disks::new_with_refreshed_list()),
             disk_warining_active: AtomicBool::new(false),
@@ -298,8 +298,8 @@ pub struct ProcessWatcher {
     pub is_first_run: AtomicBool,
 }
 
-impl ProcessWatcher {
-    pub fn new() -> Self {
+impl Default for ProcessWatcher {
+    fn default() -> Self {
         Self {
             tracked_processes: Mutex::new(HashMap::new()),
             cpu_threshold: 80.0,
@@ -311,7 +311,7 @@ impl ProcessWatcher {
     }
 }
 
-pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_threshhold: f32) {
+pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     let is_first = watcher.is_first_run.swap(false, Ordering::SeqCst);
 
     state.sys.refresh_all();
@@ -332,12 +332,14 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
         let raw_cpu = process.cpu_usage();
         let cpu = is_overhead_cpu(raw_cpu, num_cores);
         let mem = process.memory() as f64 / 1024.0;
+
         // dbg!(mem, watcher.mem_threshold);
         // dbg!(raw_cpu, num_cores, cpu);
 
         let name = process.name().to_string_lossy().to_string();
 
         let is_suspicious = cpu.status || mem > watcher.mem_threshold;
+
         // dbg!(
         //     mem,
         //     watcher.mem_threshold,
@@ -345,9 +347,9 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
         //     watcher.mem_threshold,
         //     raw_cpu
         // );
+
         if is_suspicious {
             if let Some(existing) = tracked.get_mut(&pid.as_u32()) {
-                // latter
                 existing.cpu_usage = cpu.value;
                 existing.mem_usage = mem;
 
@@ -379,25 +381,12 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher, custom_cpu_
                         first_seen: now,
                     },
                 );
-                // let msg = format!(
-                //     "Suspicious process detected\n\
-                // Name:{}\n\
-                // PID:{}\n\
-                // CPU:{:.2}%\n\
-                // Memory:{:.2}MB",
-                //     name,
-                //     pid,
-                //     cpu.value,
-                //     mem / 1024.0
-                // );
-                // // notif_log_sys!(msg);
-                // log_sys!("{}", msg);
             }
         } else {
             if tracked.remove(&pid.as_u32()).is_some() {
                 let msg = format!(" {} PID {} is now normal", name, pid);
-                // notif_log_sys!(msg);
                 log_sys!("Process:{}", msg);
+                // notif_log_sys!(msg);
                 // dbg!(msg);
             }
         }
