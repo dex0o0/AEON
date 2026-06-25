@@ -10,3 +10,6 @@ pub mod modules {
     pub mod backup;
     pub mod monitoring;
 }
+pub mod port {
+    pub mod scan;
+}

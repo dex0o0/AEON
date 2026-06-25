@@ -231,7 +231,7 @@ pub async fn check_mem(state: &mut Systate) {
 ///
 /// you can use this function to other file
 ///```
-///check_net("<ip address>").await;
+/// check_net("<ip address>").await;
 ///```
 /// <h2>for example</h2>
 ///
