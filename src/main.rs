@@ -1,20 +1,20 @@
 #[macro_use]
 mod macros;
 
-mod daemon {
-    pub mod core;
-    pub mod log;
-    pub mod notif;
-}
-
-mod modules {
-    pub mod monitoring;
-    pub mod rest;
-}
-
-use crate::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
-use crate::modules::rest::{rest_run, AppState};
-use serde::{Deserialize, Serialize};
+// mod daemon {
+//     pub mod core;
+//     pub mod log;
+//     pub mod notif;
+// }
+//
+// mod modules {
+//     pub mod monitoring;
+// }
+//
+use aeon::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
+mod cli;
+use cli::DataConf;
+// use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -24,11 +24,12 @@ use std::{env, io, u64};
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct DataConf {
-    cputsh: Option<f32>,
-}
-
+// #[derive(Deserialize, Serialize, Debug)]
+// pub struct DataConf {
+//     cputsh: Option<f32>,
+// }
+//
+//
 fn read_data(path: &PathBuf) -> Option<DataConf> {
     if !path.exists() {
         File::create(path).expect("Error:can't create config file");
@@ -81,13 +82,6 @@ async fn run() -> io::Result<()> {
     //     let lisener = tokio::net::TcpListener::bind("127.0.0.1:8080").await.unwrap();
     //     axum::serve(lisener,app).await.unwrap();
     // });
-    let app_state = AppState {
-        state: state.clone(),
-        idisk: idisk.clone(),
-        icpu: icpu.clone(),
-    };
-    tokio::spawn(rest_run(app_state));
-
     let state_clone = state.clone();
     let icpu_clone = icpu.clone();
     let _cpu_swap = tokio::spawn(async move {

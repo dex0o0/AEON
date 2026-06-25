@@ -1,12 +1,5 @@
-mod daemon {
-    pub mod core;
-    pub mod log;
-    pub mod notif;
-}
-mod modules {
-    pub mod backup;
-}
-use crate::daemon::log::Log;
+use aeon::daemon::log::Log;
+use aeon::modules;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{generate, Shell};
 use serde::{Deserialize, Serialize};
@@ -89,7 +82,7 @@ pub enum Config {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DataConf {
-    cputsh: Option<f32>,
+    pub cputsh: Option<f32>,
 }
 
 // fn get_data(){

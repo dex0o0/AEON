@@ -16,7 +16,7 @@ macro_rules! log_sys {
 macro_rules! notif_send {
     ($($arg:tt)*) => {
         if let Err(e) = $crate::daemon::notif::Notif::send("Aeon",format!($($arg)*)){
-            log_error!("Error to send notif:{}",e);
+            $crate::log_error!("Error to send notif:{}",e);
 
         }
     };

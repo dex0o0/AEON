@@ -3,6 +3,14 @@ name = "AEON"
 version = "0.1.25"
 edition = "2024"
 
+[lib]
+name="aeon"
+path="src/lib.rs"
+
+[[bin]]
+name="AEON"
+path="src/main.rs"
+
 [[bin]]
 name ="aeoncli"
 path="src/cli.rs"
