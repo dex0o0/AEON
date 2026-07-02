@@ -13,3 +13,7 @@ pub mod modules {
 pub mod port {
     pub mod scan;
 }
+
+pub mod socket {
+    pub mod lib;
+}
