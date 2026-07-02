@@ -34,7 +34,7 @@ pub fn create_sock(path: &str) -> std::io::Result<UnixListener> {
 }
 
 pub fn respond(stream: &UnixStream, msg: &str, cmd_name: &str) {
-    if let Err(e) = socket_send(stream, msg) {
-        log_error!("{}:{}", cmd_name, e);
+    if let Err(e) = socket_send(stream, cmd_name) {
+        log_error!("{}:{}:{}", msg, cmd_name, e);
     }
 }

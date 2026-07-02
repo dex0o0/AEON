@@ -15,6 +15,10 @@ path="src/main.rs"
 name ="aeoncli"
 path="src/cli.rs"
 
+[[bin]]
+name = "aeon_guardian"
+path = "src/guardian.rs"
+
 [dependencies]
 axum = "0.8.8"
 bytes = "1.11.1"
