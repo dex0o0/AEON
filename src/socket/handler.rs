@@ -11,4 +11,3 @@ pub fn handler(stream: &UnixStream, msg: &str) {
         }
     }
 }
-

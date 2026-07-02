@@ -12,7 +12,7 @@ use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, io, thread, u64};
+use std::{env, io, thread};
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";

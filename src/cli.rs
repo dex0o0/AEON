@@ -1,7 +1,7 @@
 use aeon::daemon::log::Log;
 use aeon::modules;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
-use clap_complete::{generate, Shell};
+use clap_complete::{Shell, generate};
 use serde::{Deserialize, Serialize};
 use std::{
     env, fs,
