@@ -90,6 +90,7 @@ pub struct DataConf {
 //     create_dir_conf(&path);
 // }
 
+#[allow(unused)]
 fn create_dir_conf(path: &PathBuf) {
     let path_dir = path.parent().expect("Error parent");
     if !path_dir.exists() {
@@ -102,6 +103,7 @@ fn create_dir_conf(path: &PathBuf) {
     }
 }
 
+#[allow(unused)]
 async fn save_conf(data: DataConf) {
     let homedir = env::home_dir().expect("Error homedir");
     let conf_path = homedir.join(".config/AEON/config.json");
@@ -111,6 +113,7 @@ async fn save_conf(data: DataConf) {
         .expect("Error can not write data");
 }
 
+#[allow(unused)]
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let homedir = env::home_dir().expect("Error homedir");
