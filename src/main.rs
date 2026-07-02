@@ -3,15 +3,20 @@ mod macros;
 
 use aeon::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
 mod cli;
+use aeon::socket::{
+    handler,
+    lib::{create_sock, socket_get},
+};
 use cli::DataConf;
 use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, io, u64};
+use std::{env, io, thread, u64};
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
+const SOCK_PATH: &str = "/tmp/AEON.sock";
 
 fn read_data(path: &PathBuf) -> Option<DataConf> {
     if !path.exists() {
@@ -30,6 +35,7 @@ fn read_data(path: &PathBuf) -> Option<DataConf> {
 //MAIN function
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    start_sock_serv(SOCK_PATH)?;
     run().await
 }
 
@@ -98,5 +104,27 @@ async fn run() -> io::Result<()> {
         }
     });
     let _ = tokio::time::sleep(Duration::from_secs(u64::MAX)).await;
+    Ok(())
+}
+
+fn start_sock_serv(sock_path: &str) -> io::Result<()> {
+    let listener = create_sock(sock_path).expect("failed to bind socket");
+    println!("socket run on path: '{}'", sock_path);
+
+    thread::spawn(move || {
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    thread::spawn(move || match socket_get(&stream) {
+                        Ok(msg) => {
+                            handler::handler(&stream, &msg);
+                        }
+                        Err(e) => eprintln!("Error to read message:{}", e),
+                    });
+                }
+                Err(e) => eprintln!("Error:{e}"),
+            }
+        }
+    });
     Ok(())
 }

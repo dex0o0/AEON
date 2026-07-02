@@ -2,9 +2,9 @@ use std::{
     fs,
     io::{BufRead, BufReader, Write},
     os::unix::net::{UnixListener, UnixStream},
-    process::Command,
-    thread,
-    time::Duration,
+    // process::Command,
+    // thread,
+    // time::Duration,
 };
 
 //this is function for Send message to unix socket
@@ -31,4 +31,10 @@ pub fn create_sock(path: &str) -> std::io::Result<UnixListener> {
         let _ = fs::remove_file(path);
     }
     UnixListener::bind(path)
+}
+
+pub fn respond(stream: &UnixStream, msg: &str, cmd_name: &str) {
+    if let Err(e) = socket_send(stream, msg) {
+        log_error!("{}:{}", cmd_name, e);
+    }
 }
