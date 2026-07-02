@@ -1,16 +1,23 @@
 #!/bin/bash
 
+set -emu
+
 LOGROTATE_PATH=/etc/logrotate.d/aeon
 ROOT_DIR=/usr/bin/
+GUARD_BIN=/usr/bin/aeon_guardian
 DIR_RELEASE=$(pwd)/target/release
 ROOT_BINARY=/usr/bin/AEON
 CLI_BINARY=$DIR_RELEASE/aeoncli
+GUARD_NAME="aeon_guardian"
 APP_NAME="AEON"
 BINARY_PATH=$DIR_RELEASE/$APP_NAME
+GUARD_BIN_PATH=$DIR_RELEASE/$GUARD_NAME
 SERVICE_DIR=/etc/systemd/system
 GROUP="aeon"
 SERVICE_PATH=$SERVICE_DIR/AEON.service
-SERVIC_CONF=$(
+GUARD_SERVICE_PATH=$SERVICE_DIR/aeon_guardian.service
+
+AEON_SERVICE_CONF=$(
   cat <<EOF
 [Unit]
 Description=$APP_NAME daemon service
@@ -28,6 +35,28 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
+WantedBy=multi-user.target
+EOF
+)
+
+GUARD_SERVICE_CONF=$(
+  cat <<EOF
+[Unit]
+Description=AEON Guardian Service
+After=network.target AEON.service
+
+[Service]
+ExecStart=$GUARD_BIN
+Restart=always
+RestartSec=3
+
+User=$USER
+Group=$GROUP
+
+StandardOutput=journal
+StandardError=journal
+
+[install]
 WantedBy=multi-user.target
 EOF
 )
@@ -52,6 +81,7 @@ error_exit() {
   exit 1
 }
 
+#config logrotate
 config_logrotate() {
   echo "configing logrotate..."
   if ! [ -f $LOGROTATE_PATH ]; then
@@ -61,12 +91,13 @@ config_logrotate() {
   else
     echo "config loger"
     da=$(cat $LOGROTATE_PATH)
-    if ! (($da == $LOG_R_CONF)); then
+    if ! [[ $da == $LOG_R_CONF ]]; then
       sudo rm $LOGROTATE_PATH && config_logrotate || error_exit "Error to conf $LOGROTATE_PATH"
     fi
   fi
 }
 
+#config groups and permisions
 groupConf() {
   if ! getent group $GROUP &>/dev/null; then
     echo "group:$GROUP ,does not exitst creating it..."
@@ -78,24 +109,38 @@ groupConf() {
     echo "adding user to group $GROUP" && sudo usermod -a $USER -G $GROUP || error_exit "Failde to add user:$USER to group:$GROUP"
   fi
 }
+
+#config aeoncli
 config_cli() {
   if [[ -f $CLI_BINARY ]]; then
     echo "moving $CLI_BINARY to $ROOT_DIR" && sudo mv $CLI_BINARY $ROOT_DIR || error_exit "can't move $CLI_BINARY to $ROOT_DIR"
   fi
 }
+
+#config AEON service
 confing_aeon() {
   echo "configing service..."
-  echo "$SERVIC_CONF" | sudo tee "$SERVICE_PATH" >/dev/null || error_exit "Failed to config $SERVICE_PATH"
+  echo "$AEON_SERVICE_CONF" | sudo tee "$SERVICE_PATH" >/dev/null || error_exit "Failed to config $SERVICE_PATH"
   echo "config completed"
 }
 
-reload_daemon() {
-  echo "reload daemon" && sudo systemctl daemon-reload && sudo systemctl restart "AEON.service"
+#config Guardian
+config_guardian() {
+  echo "moving $GUARD_BIN_PATH" to $GUARD_BIN && sudo mv $GUARD_BIN_PATH $GUARD_BIN || error_exit "can't move $GUARD_BIN_PATH to $GUARD_BIN"
+  echo "config Guardian"
+  echo "$GUARD_SERVICE_CONF" | sudo tee "$GUARD_SERVICE_PATH" >/dev/null || error_exit "Failed to config $GUARD_SERVICE_PATH"
+  echo "config completed"
 }
 
+#reload AEON service
+reload_daemon() {
+  echo "reload daemon" && sudo systemctl daemon-reload && sudo systemctl restart "AEON.service" && sudo systemctl restart "aeon_guardian.service"
+}
+
+#check function
 check_conf() {
   data=$(cat $SERVICE_PATH)
-  if [[ $data == $SERVIC_CONF ]]; then
+  if [[ $data == $AEON_SERVICE_CONF ]]; then
     echo "$(basename $SERVICE_PATH),already confinged"
     return 0
   else
@@ -120,6 +165,7 @@ if which cargo >/dev/null; then
       echo "create $SERVICE_PATH" && sudo touch $SERVICE_PATH
       echo "create AEON.service"
     fi
+    config_guardian
     if ! check_conf; then
       echo "calling fn conf..." && confing_aeon
     fi
