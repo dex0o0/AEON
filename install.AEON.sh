@@ -2,6 +2,13 @@
 
 set -emu
 
+RED='\033[31m'
+BLUE='\033[34m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
 LOGROTATE_PATH=/etc/logrotate.d/aeon
 ROOT_DIR=/usr/bin/
 GUARD_BIN=/usr/bin/aeon_guardian
@@ -77,19 +84,29 @@ EOF
 )
 
 error_exit() {
-  echo "ERROR:$1" >&2
+  eprint $1 >&2
   exit 1
+}
+
+printed() {
+  echo -e "${GREEN}=> ${NC}${BOLD}$1${NC}"
+}
+yprint() {
+  echo -e "[${GREEN}OK${NC}]:${BOLD}${BLUE}$1${NC}"
+}
+eprint() {
+  echo -e "[${RED}ERROR${NC}]:${BOLD}${YELLOW}$1${NC}"
 }
 
 #config logrotate
 config_logrotate() {
-  echo "configing logrotate..."
+  printed "configing logrotate..."
   if ! [ -f $LOGROTATE_PATH ]; then
-    echo "creating" && sudo touch $LOGROTATE_PATH || error_exit "Error to create logrotate file \{$LOGROTATE_PATH\}"
-    echo "config logrotate.." && echo "$LOG_R_CONF" | sudo tee "$LOGROTATE_PATH" >/dev/null || error_exit "Error config logrotate"
-    echo "---config completed---"
+    printed "creating" && sudo touch $LOGROTATE_PATH || error_exit "Error to create logrotate file \{$LOGROTATE_PATH\}"
+    printed "config logrotate.." && echo "$LOG_R_CONF" | sudo tee "$LOGROTATE_PATH" >/dev/null || error_exit "Error config logrotate"
+    yprint "---config completed---"
   else
-    echo "config loger"
+    printed "config loger"
     da=$(cat $LOGROTATE_PATH)
     if ! [[ $da == $LOG_R_CONF ]]; then
       sudo rm $LOGROTATE_PATH && config_logrotate || error_exit "Error to conf $LOGROTATE_PATH"
@@ -100,48 +117,48 @@ config_logrotate() {
 #config groups and permisions
 groupConf() {
   if ! getent group $GROUP &>/dev/null; then
-    echo "group:$GROUP ,does not exitst creating it..."
-    echo "creating group $GROUP" && sudo groupadd $GROUP || error_exit "Fail to create group"
+    printed "group:$GROUP ,does not exitst creating it..."
+    printed "creating group $GROUP" && sudo groupadd $GROUP || error_exit "Fail to create group"
   fi
 
   if ! groups $USER | grep -q "\b$GROUP\b"; then
-    echo "user:$USER,is not in group $GROUP"
-    echo "adding user to group $GROUP" && sudo usermod -a $USER -G $GROUP || error_exit "Failde to add user:$USER to group:$GROUP"
+    printed "user:$USER,is not in group $GROUP"
+    printed "adding user to group $GROUP" && sudo usermod -a $USER -G $GROUP || error_exit "Failde to add user:$USER to group:$GROUP"
   fi
 }
 
 #config aeoncli
 config_cli() {
   if [[ -f $CLI_BINARY ]]; then
-    echo "moving $CLI_BINARY to $ROOT_DIR" && sudo mv $CLI_BINARY $ROOT_DIR || error_exit "can't move $CLI_BINARY to $ROOT_DIR"
+    printed "moving $CLI_BINARY to $ROOT_DIR" && sudo mv $CLI_BINARY $ROOT_DIR || error_exit "can't move $CLI_BINARY to $ROOT_DIR"
   fi
 }
 
 #config AEON service
 confing_aeon() {
-  echo "configing service..."
+  printed "configing service..."
   echo "$AEON_SERVICE_CONF" | sudo tee "$SERVICE_PATH" >/dev/null || error_exit "Failed to config $SERVICE_PATH"
-  echo "config completed"
+  yprint "config completed"
 }
 
 #config Guardian
 config_guardian() {
-  echo "moving $GUARD_BIN_PATH" to $GUARD_BIN && sudo mv $GUARD_BIN_PATH $GUARD_BIN || error_exit "can't move $GUARD_BIN_PATH to $GUARD_BIN"
-  echo "config Guardian"
+  printed "moving $GUARD_BIN_PATH" to $GUARD_BIN && sudo mv $GUARD_BIN_PATH $GUARD_BIN || error_exit "can't move $GUARD_BIN_PATH to $GUARD_BIN"
+  printed "config Guardian"
   echo "$GUARD_SERVICE_CONF" | sudo tee "$GUARD_SERVICE_PATH" >/dev/null || error_exit "Failed to config $GUARD_SERVICE_PATH"
-  echo "config completed"
+  printed "config completed"
 }
 
 #reload AEON service
 reload_daemon() {
-  echo "reload daemon" && sudo systemctl daemon-reload && sudo systemctl restart "AEON.service" && sudo systemctl restart "aeon_guardian.service"
+  printed "reload daemon" && sudo systemctl daemon-reload && sudo systemctl restart "AEON.service" && sudo systemctl restart "aeon_guardian.service"
 }
 
 #check function
 check_conf() {
   data=$(cat $SERVICE_PATH)
   if [[ $data == $AEON_SERVICE_CONF ]]; then
-    echo "$(basename $SERVICE_PATH),already confinged"
+    yprint "$(basename $SERVICE_PATH),already confinged"
     return 0
   else
     return 1
@@ -149,36 +166,36 @@ check_conf() {
 }
 
 if which cargo >/dev/null; then
-  echo "building service..."
+  printed "building service..."
   if cargo build --release &>/dev/null; then
-    echo "build success.."
+    yprint "build success.."
     if [ -f $BINARY_PATH ]; then
-      echo "moving file $BINARY_PATH to $ROOT_BINARY" && sudo mv $BINARY_PATH $ROOT_BINARY
+      printed "moving file $BINARY_PATH to $ROOT_BINARY" && sudo mv $BINARY_PATH $ROOT_BINARY
     fi
     config_cli
-    echo "creating AEON.service"
+    printed "creating AEON.service"
     if ! [ -d $SERVICE_DIR ]; then
-      echo "make $SERVICE_DIR" && mkdir -p $SERVICE_DIR
+      printed "make $SERVICE_DIR" && mkdir -p $SERVICE_DIR
     fi
-    echo -e "create conf in path \'$SERVICE_DIR\'"
+    printed "create conf in path \'$SERVICE_DIR\'"
     if ! [ -f $SERVICE_PATH ]; then
-      echo "create $SERVICE_PATH" && sudo touch $SERVICE_PATH
-      echo "create AEON.service"
+      eprint "create $SERVICE_PATH" && sudo touch $SERVICE_PATH
+      yprint "create AEON.service"
     fi
     config_guardian
     if ! check_conf; then
-      echo "calling fn conf..." && confing_aeon
+      printed "calling fn conf..." && confing_aeon
     fi
-    echo "calling fn group conf..." && groupConf && echo "group confinged"
-    echo "calling fn loger config.." && config_logrotate && echo "loger configed"
-    echo "reloading.." && reload_daemon
-
+    printed "calling fn group conf..." && groupConf && yprint "group confinged"
+    printed "calling fn loger config.." && config_logrotate && yprint "loger configed"
+    printed "reloading.." && reload_daemon
+    yprint "<---install successfully--->"
   else
-    echo "<Error building>\n\tPlease check cargo build and next run install file."
+    eprint "<Error building>\n\tPlease check cargo build and next run install file."
   fi
 else
   sys=$(uname -n)
-  echo "download cargo and rustup..."
+  printed "download cargo and rustup..."
   if [[ $sys == "arch" ]]; then
     sudo pacman -S cargo rustup
   fi
