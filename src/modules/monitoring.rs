@@ -3,8 +3,8 @@ use std::{
     io,
     process::Command,
     sync::{
-        Mutex,
         atomic::{AtomicBool, Ordering},
+        Mutex,
     },
     time::{Duration, Instant},
 };
