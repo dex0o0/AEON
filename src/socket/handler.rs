@@ -1,13 +1,13 @@
 use super::lib::respond;
-use std::os::unix::net::UnixStream;
+use tokio::net::UnixStream;
 
-pub fn handler(stream: &UnixStream, msg: &str) {
+pub async fn handler(stream: &mut UnixStream, msg: &str) {
     let cmd = msg.trim();
     match cmd {
-        "PING" => respond(stream, "PING", "PONG"),
+        "PING" => respond(stream, "PING", "PONG").await,
         _ => {
             let error_msg = format!("Error: Unknown command '{}'", cmd);
-            respond(stream, &error_msg, "UNKNOWN");
+            respond(stream, &error_msg, "UNKNOWN").await;
         }
     }
 }

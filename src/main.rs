@@ -8,7 +8,6 @@ use aeon::socket::{
     lib::{create_sock, socket_get},
 };
 use cli::DataConf;
-use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,18 +17,16 @@ use std::{env, io, thread};
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
 const SOCK_PATH: &str = "/tmp/AEON.sock";
 
-fn read_data(path: &PathBuf) -> Option<DataConf> {
+async fn read_data(path: &PathBuf) -> io::Result<DataConf> {
     if !path.exists() {
-        File::create(path).expect("Error:can't create config file");
-    }
-    let data = fs::read_to_string(path).expect("can't read data as config file");
-    match serde_json::from_str(&data) {
-        Ok(json) => Some(json),
-        Err(e) => {
-            eprintln!("Error parsing data config:{}", e);
-            None
+        if let Some(parent) = path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
         }
+        tokio::fs::write(path, b"{}").await?;
     }
+    let data = tokio::fs::read_to_string(path).await?;
+    let json: DataConf = serde_json::from_str(&data).unwrap_or(DataConf { cputsh: Some(80.0) });
+    Ok(json)
 }
 
 //MAIN function
@@ -44,7 +41,9 @@ async fn run() -> io::Result<()> {
 
     let homedir = env::home_dir().expect("Error");
     let path_conf = homedir.join(FILE_DATA_PATH);
-    let conf = read_data(&path_conf).unwrap_or(DataConf { cputsh: Some(80.0) });
+    let conf = read_data(&path_conf)
+        .await
+        .unwrap_or(DataConf { cputsh: Some(80.0) });
 
     let state = Arc::new(tokio::sync::Mutex::new(Systate::default()));
     let idisk = Arc::new(tokio::sync::Mutex::new(Idisks::default()));
@@ -64,7 +63,7 @@ async fn run() -> io::Result<()> {
 
     let state_clone = state.clone();
     let icpu_clone = icpu.clone();
-    let _cpu_swap = tokio::spawn(async move {
+    tokio::spawn(async move {
         loop {
             inter100mil.tick().await;
             let mut state = state_clone.lock().await;
@@ -76,7 +75,7 @@ async fn run() -> io::Result<()> {
     });
 
     let idisks_clone = idisk.clone();
-    let _disk = tokio::spawn(async move {
+    tokio::spawn(async move {
         loop {
             inter2sec.tick().await;
             let mut idisks = idisks_clone.lock().await;
@@ -84,7 +83,7 @@ async fn run() -> io::Result<()> {
         }
     });
 
-    let _net_handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         loop {
             inter60sec.tick().await;
             let _ = monitoring::check_net("8.8.8.8").await;
@@ -108,18 +107,20 @@ async fn run() -> io::Result<()> {
 }
 
 fn start_sock_serv(sock_path: &str) -> io::Result<()> {
-    let listener = create_sock(sock_path).expect("failed to bind socket");
+    let listener = create_sock(sock_path)?;
     println!("socket run on path: '{}'", sock_path);
 
-    thread::spawn(move || {
-        for stream in listener.incoming() {
-            match stream {
-                Ok(stream) => {
-                    thread::spawn(move || match socket_get(&stream) {
-                        Ok(msg) => {
-                            handler::handler(&stream, &msg);
+    tokio::spawn(async move {
+        loop {
+            match listener.accept().await {
+                Ok((mut stream, _addr)) => {
+                    tokio::spawn(async move {
+                        match socket_get(&mut stream).await {
+                            Ok(msg) => {
+                                handler::handler(&mut stream, &msg).await;
+                            }
+                            Err(e) => eprintln!("Error to read message:{}", e),
                         }
-                        Err(e) => eprintln!("Error to read message:{}", e),
                     });
                 }
                 Err(e) => eprintln!("Error:{e}"),
