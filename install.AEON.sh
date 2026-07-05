@@ -78,7 +78,8 @@ compress
 delaycompress
 missingok
 notifempty
-maxsize 1M
+size 10M
+maxsize 10M
 create 644 $USER $USER
 }
 EOF
