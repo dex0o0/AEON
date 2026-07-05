@@ -23,7 +23,7 @@ path = "src/guardian.rs"
 axum = "0.8.8"
 bytes = "1.11.1"
 bzip2 = "0.6.1"
-chrono = "0.4.44"
+chrono ={version =  "0.4.44",features=["serde"]}
 clap ={version="4.5.58",features=["derive","cargo"]} 
 clap_complete = "4.5.66"
 colored = "3.1.1"

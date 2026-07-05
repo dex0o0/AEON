@@ -11,7 +11,7 @@ use cli::DataConf;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, io, thread};
+use std::{env, io};
 
 // const FILE_CONF:&str="/tmp/data.json";
 const FILE_DATA_PATH: &str = ".config/AEON/config.json";
