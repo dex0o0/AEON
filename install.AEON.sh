@@ -67,17 +67,18 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 )
+REAL_HOME=$(eval echo "~${SUDO_USERS:-$USER}")
 
 LOG_R_CONF=$(
   cat <<EOF
-$HOME/.log/dex_daemon/*.log{
+$REAL_HOME/.log/dex_daemon/*.log{
 daily
 rotate 7
 compress
 delaycompress
 missingok
 notifempty
-maxsize 5M
+maxsize 1M
 create 644 $USER $USER
 }
 EOF
@@ -167,7 +168,7 @@ check_conf() {
 
 if which cargo >/dev/null; then
   printed "building service..."
-  if cargo build --release &>/dev/null; then
+  if cargo build --release; then
     yprint "build success.."
     if [ -f $BINARY_PATH ]; then
       printed "moving file $BINARY_PATH to $ROOT_BINARY" && sudo mv $BINARY_PATH $ROOT_BINARY
