@@ -1,3 +1,4 @@
+use super::scan_sys::Sysinfo;
 use std::{
     collections::HashMap,
     io,
@@ -34,6 +35,12 @@ pub struct Systate {
     pub sys: System,
     pub mem_useag: Mutex<f32>,
     pub swap_usage: Mutex<f32>,
+}
+
+#[derive(Debug)]
+struct IsOverheadCpu {
+    value: f32,
+    status: bool,
 }
 
 impl Default for Icpu {
@@ -393,11 +400,6 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     });
 }
 
-struct IsOverheadCpu {
-    value: f32,
-    status: bool,
-}
-
 fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {
     if raw_core == 0.0 {
         return IsOverheadCpu {
@@ -407,9 +409,6 @@ fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {
     }
 
     let total_cpu_usage = raw_core / num_core;
-
-    // println!("{:.2}/{:.2}= {:.2}", raw_core, num_core, &total_cpu_usage);
-
     if total_cpu_usage > 80.0 {
         IsOverheadCpu {
             value: total_cpu_usage,
