@@ -153,10 +153,9 @@ pub struct Cpuinfo {
 impl Cpuinfo {
     #[allow(dead_code)]
     pub fn get_cpu_usage(&mut self) -> f32 {
-        self.sys.refresh_all();
+        self.sys.refresh_cpu_usage();
 
         sleep(Duration::from_millis(200));
-        self.sys.refresh_cpu_all();
         self.sys.global_cpu_usage()
     }
     pub fn get_core() -> u32 {
@@ -167,7 +166,8 @@ impl Cpuinfo {
         }
     }
     pub fn get_thread_core() -> u32 {
-        let sys = System::new_all();
+        let mut sys = System::new();
+        sys.refresh_cpu_usage();
         sys.cpus().len() as u32
     }
 }

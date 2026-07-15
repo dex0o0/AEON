@@ -1,4 +1,3 @@
-use super::scan_sys::Sysinfo;
 use std::{
     collections::HashMap,
     io,
@@ -24,6 +23,7 @@ pub struct Idisks {
 #[derive(Debug)]
 pub struct Icpu {
     pub cpu_usage: Mutex<f32>,
+    pub cpu_temp: Mutex<u32>,
     pub cpu_warning_active: AtomicBool,
     pub cpu_warning_start: Mutex<Option<Instant>>,
     pub cpu_100_notif: AtomicBool,
@@ -47,6 +47,7 @@ impl Default for Icpu {
     fn default() -> Self {
         Self {
             cpu_usage: Mutex::new(0.0),
+            cpu_temp: Mutex::new(0),
             cpu_warning_active: AtomicBool::new(false),
             cpu_warning_start: Mutex::new(None),
             cpu_100_notif: AtomicBool::new(false),
@@ -58,7 +59,7 @@ impl Default for Icpu {
 impl Default for Systate {
     fn default() -> Self {
         Self {
-            sys: System::new_all(),
+            sys: System::new(),
             mem_useag: Mutex::new(0.0),
             swap_usage: Mutex::new(0.0),
         }
@@ -154,6 +155,19 @@ pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
         if icpu.cpu_warning_active.load(Ordering::SeqCst) {
             icpu.cpu_warning_active.store(false, Ordering::SeqCst);
         }
+    }
+
+    let comp = sysinfo::Components::new_with_refreshed_list();
+    let temp = comp
+        .iter()
+        .find(|c| {
+            c.label().to_lowercase().contains("cpu") || c.label().to_lowercase().contains("core")
+        })
+        .map(|c| c.temperature().unwrap_or(0.0) as u32)
+        .unwrap_or(0);
+
+    if let Ok(mut cpu_temp_lock) = icpu.cpu_temp.lock() {
+        *cpu_temp_lock = temp;
     }
 }
 
@@ -321,7 +335,11 @@ impl Default for ProcessWatcher {
 pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     let is_first = watcher.is_first_run.swap(false, Ordering::SeqCst);
 
-    state.sys.refresh_all();
+    state.sys.refresh_cpu_usage();
+
+    state
+        .sys
+        .refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     if is_first {
         return;
@@ -332,7 +350,7 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     let now = Instant::now();
 
     tracked.retain(|pid, _| processes.keys().any(|p| p.as_u32() == *pid));
-
+    tracked.shrink_to_fit();
     let num_cores = state.sys.cpus().len() as f32;
 
     processes.iter().for_each(|(pid, process)| {
@@ -398,6 +416,9 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
             }
         }
     });
+    if tracked.is_empty() {
+        tracked.shrink_to_fit();
+    }
 }
 
 fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {

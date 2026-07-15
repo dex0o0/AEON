@@ -63,11 +63,11 @@ Group=$GROUP
 StandardOutput=journal
 StandardError=journal
 
-[install]
+[Install]
 WantedBy=multi-user.target
 EOF
 )
-REAL_HOME=$(eval echo "~${SUDO_USERS:-$USER}")
+REAL_HOME=$(eval echo "~${SUDO_USER:-$USER}")
 
 LOG_R_CONF=$(
   cat <<EOF
