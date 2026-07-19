@@ -2,7 +2,7 @@ use aeon::socket::lib::{socket_get, socket_send};
 use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio::process::Command;
-use tokio::time::{self, interval};
+use tokio::time::{self};
 
 const SOCK_PATH: &str = "/tmp/AEON.sock";
 
