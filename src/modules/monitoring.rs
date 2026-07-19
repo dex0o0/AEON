@@ -77,7 +77,7 @@ impl Default for Idisks {
 }
 
 //check SWAP usage
-pub async fn monswap(state: &mut Systate) {
+pub fn monswap(state: &mut Systate) {
     state.sys.refresh_memory();
     let swap = sysinfo::System::free_swap(&state.sys);
     let total = sysinfo::System::total_swap(&state.sys);
@@ -94,7 +94,7 @@ pub async fn monswap(state: &mut Systate) {
 }
 
 //check CPU usage
-pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
+pub fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
     state.sys.refresh_cpu_usage();
     let cpu_usage = state.sys.global_cpu_usage();
     let mut cpu = icpu.cpu_usage.lock().expect("E");
@@ -220,7 +220,7 @@ pub fn check_disk(state: &mut Idisks) {
 }
 
 //check MEMORY usage
-pub async fn check_mem(state: &mut Systate) {
+pub fn check_mem(state: &mut Systate) {
     state.sys.refresh_memory();
     let total = state.sys.total_memory();
     let usage = state.sys.used_memory();
