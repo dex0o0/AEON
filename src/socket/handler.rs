@@ -1,4 +1,4 @@
-use std::{fs, path::Path, process::Command, sync::Arc};
+use std::{fs, path::Path, sync::Arc};
 
 use super::lib::respond;
 use crate::modules::monitoring::{Icpu, Idisks};
