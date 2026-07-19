@@ -1,5 +1,4 @@
 use std::{fs, path::Path, sync::Arc};
-
 use super::lib::respond;
 use crate::modules::monitoring::{Icpu, Idisks};
 use parking_lot::RwLock;
