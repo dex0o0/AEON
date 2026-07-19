@@ -23,6 +23,7 @@ pub struct Idisks {
 #[derive(Debug)]
 pub struct Icpu {
     pub cpu_usage: Mutex<f32>,
+    pub cpu_temp: Mutex<u32>,
     pub cpu_warning_active: AtomicBool,
     pub cpu_warning_start: Mutex<Option<Instant>>,
     pub cpu_100_notif: AtomicBool,
@@ -36,10 +37,17 @@ pub struct Systate {
     pub swap_usage: Mutex<f32>,
 }
 
+#[derive(Debug)]
+struct IsOverheadCpu {
+    value: f32,
+    status: bool,
+}
+
 impl Default for Icpu {
     fn default() -> Self {
         Self {
             cpu_usage: Mutex::new(0.0),
+            cpu_temp: Mutex::new(0),
             cpu_warning_active: AtomicBool::new(false),
             cpu_warning_start: Mutex::new(None),
             cpu_100_notif: AtomicBool::new(false),
@@ -51,7 +59,7 @@ impl Default for Icpu {
 impl Default for Systate {
     fn default() -> Self {
         Self {
-            sys: System::new_all(),
+            sys: System::new(),
             mem_useag: Mutex::new(0.0),
             swap_usage: Mutex::new(0.0),
         }
@@ -69,7 +77,7 @@ impl Default for Idisks {
 }
 
 //check SWAP usage
-pub async fn monswap(state: &mut Systate) {
+pub fn monswap(state: &mut Systate) {
     state.sys.refresh_memory();
     let swap = sysinfo::System::free_swap(&state.sys);
     let total = sysinfo::System::total_swap(&state.sys);
@@ -86,7 +94,7 @@ pub async fn monswap(state: &mut Systate) {
 }
 
 //check CPU usage
-pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
+pub fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
     state.sys.refresh_cpu_usage();
     let cpu_usage = state.sys.global_cpu_usage();
     let mut cpu = icpu.cpu_usage.lock().expect("E");
@@ -148,6 +156,19 @@ pub async fn moncpu(state: &mut Systate, icpu: &mut Icpu, value: f32) {
             icpu.cpu_warning_active.store(false, Ordering::SeqCst);
         }
     }
+
+    let comp = sysinfo::Components::new_with_refreshed_list();
+    let temp = comp
+        .iter()
+        .find(|c| {
+            c.label().to_lowercase().contains("cpu") || c.label().to_lowercase().contains("core")
+        })
+        .map(|c| c.temperature().unwrap_or(0.0) as u32)
+        .unwrap_or(0);
+
+    if let Ok(mut cpu_temp_lock) = icpu.cpu_temp.lock() {
+        *cpu_temp_lock = temp;
+    }
 }
 
 //check DISK usage
@@ -199,7 +220,7 @@ pub fn check_disk(state: &mut Idisks) {
 }
 
 //check MEMORY usage
-pub async fn check_mem(state: &mut Systate) {
+pub fn check_mem(state: &mut Systate) {
     state.sys.refresh_memory();
     let total = state.sys.total_memory();
     let usage = state.sys.used_memory();
@@ -314,7 +335,11 @@ impl Default for ProcessWatcher {
 pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     let is_first = watcher.is_first_run.swap(false, Ordering::SeqCst);
 
-    state.sys.refresh_all();
+    state.sys.refresh_cpu_usage();
+
+    state
+        .sys
+        .refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     if is_first {
         return;
@@ -325,7 +350,7 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
     let now = Instant::now();
 
     tracked.retain(|pid, _| processes.keys().any(|p| p.as_u32() == *pid));
-
+    tracked.shrink_to_fit();
     let num_cores = state.sys.cpus().len() as f32;
 
     processes.iter().for_each(|(pid, process)| {
@@ -391,11 +416,9 @@ pub fn scan_processes(state: &mut Systate, watcher: &ProcessWatcher) {
             }
         }
     });
-}
-
-struct IsOverheadCpu {
-    value: f32,
-    status: bool,
+    if tracked.is_empty() {
+        tracked.shrink_to_fit();
+    }
 }
 
 fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {
@@ -407,9 +430,6 @@ fn is_overhead_cpu(raw_core: f32, num_core: f32) -> IsOverheadCpu {
     }
 
     let total_cpu_usage = raw_core / num_core;
-
-    // println!("{:.2}/{:.2}= {:.2}", raw_core, num_core, &total_cpu_usage);
-
     if total_cpu_usage > 80.0 {
         IsOverheadCpu {
             value: total_cpu_usage,

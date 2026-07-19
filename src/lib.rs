@@ -9,6 +9,7 @@ pub mod daemon {
 pub mod modules {
     pub mod backup;
     pub mod monitoring;
+    pub mod scan_sys;
 }
 pub mod port {
     pub mod scan;

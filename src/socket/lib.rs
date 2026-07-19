@@ -1,4 +1,4 @@
-use std::{fs, io};
+use std::fs;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{UnixListener, UnixStream},
