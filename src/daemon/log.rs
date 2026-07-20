@@ -141,20 +141,3 @@ impl Logstatus {
         Ok(())
     }
 }
-
-#[test]
-fn test() {
-    fn default_test() {
-        let def = Logstatus::default();
-        println!("{:?}", def);
-    }
-
-    fn tes_totot() {
-        let homedir = std::env::home_dir().unwrap();
-        let mut def = Logstatus::with_path(homedir.join(".log/dex_daemon/ERROR.log"));
-        let _ = def.analyse();
-        println!("{:?}", def);
-    }
-    tes_totot();
-    default_test();
-}

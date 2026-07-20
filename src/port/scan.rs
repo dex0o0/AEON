@@ -76,23 +76,3 @@ pub fn scan_netstate_udp() -> Vec<String> {
     }
     out_list
 }
-
-#[cfg(test)]
-mod test {
-    use crate::port::scan::{scan_netstate_tcp, scan_netstate_udp};
-
-    #[test]
-    fn test_tcp() {
-        let status = scan_netstate_tcp();
-        status.iter().for_each(|p| {
-            println!("{:?}", p);
-        });
-    }
-    #[test]
-    fn test_udp() {
-        let status = scan_netstate_udp();
-        status.iter().for_each(|p| {
-            println!("{:?}", p);
-        });
-    }
-}
