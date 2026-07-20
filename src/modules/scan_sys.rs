@@ -173,16 +173,16 @@ impl Cpuinfo {
 }
 
 #[allow(dead_code)]
-pub fn physical_mem_stats() -> Option<f64> {
+fn physical_mem_stats() -> Option<f64> {
     memory_stats().map(|usage| (usage.physical_mem as f32 / 1024.0).into())
 }
 
 #[allow(dead_code)]
-pub fn virtual_mem_stats() -> Option<f64> {
+fn virtual_mem_stats() -> Option<f64> {
     memory_stats().map(|usage| (usage.virtual_mem as f32 / 1024.0).into())
 }
 #[allow(dead_code)]
-pub fn total_mem_stats(phy: f64, vir: f64) -> Option<f64> {
+fn total_mem_stats(phy: f64, vir: f64) -> Option<f64> {
     let total = phy + vir;
     Some(total)
 }

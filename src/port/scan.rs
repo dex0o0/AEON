@@ -5,7 +5,7 @@ use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::time::Duration;
 
 const START_PORTS: u16 = 1u16;
-const END_PORTS: u16 = 65_535u16;
+const END_PORTS: u16 = u16::MAX; //65_535u16;
 const TIMEOUT: Duration = Duration::from_millis(100);
 
 //scan all ports local

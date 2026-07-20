@@ -1,14 +1,14 @@
-use std::{fs, path::Path, sync::Arc};
 use super::lib::respond;
 use crate::modules::monitoring::{Icpu, Idisks};
+use nvml_wrapper::Nvml;
+
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use tokio::net::UnixStream;
-use nvml_wrapper::Nvml;
 use std::sync::OnceLock;
+use std::{fs, path::Path, sync::Arc};
+use tokio::net::UnixStream;
 
-static NVML_INSTANCE:OnceLock<Option<Nvml>>=OnceLock::new();
-
+static NVML_INSTANCE: OnceLock<Option<Nvml>> = OnceLock::new();
 
 #[derive(Serialize, Default, Debug, Deserialize)]
 pub struct DiskInfoResponse {
@@ -123,12 +123,9 @@ async fn transe_disk(idisks: Arc<RwLock<Idisks>>) -> Vec<DiskInfoResponse> {
     }
     vec
 }
-async fn transe_cpu(
-    icpu: Arc<RwLock<Icpu>>,
-    static_info: &StaticSystemInfo,
-) -> Cpuinfo {
+async fn transe_cpu(icpu: Arc<RwLock<Icpu>>, static_info: &StaticSystemInfo) -> Cpuinfo {
     let icpug = icpu.read();
-    let current_usage = icpug.cpu_usage.lock().map(|u| *u).unwrap_or(0.0) ;
+    let current_usage = icpug.cpu_usage.lock().map(|u| *u).unwrap_or(0.0);
     let current_temp = icpug.cpu_temp.lock().map(|t| *t).unwrap_or(0);
 
     Cpuinfo {
@@ -147,7 +144,7 @@ async fn transe_gpu(static_info: &StaticSystemInfo) -> Gpuinfo {
         get_nvidia_gpu_usage().unwrap_or(0.0)
     } else if brand.contains("amd") || brand.contains("radeon") {
         get_amd_gpu_usage().unwrap_or(0.0)
-    }else {
+    } else {
         0.0
     };
 
@@ -166,22 +163,20 @@ fn get_amd_gpu_usage() -> Option<f32> {
         "/sys/class/drm/card1/device/gpu_busy_percent",
     ];
     for path in paths {
-        if Path::new(&path).exists() 
-            && let Ok(val) = fs::read_to_string(path) 
-                && let Ok(u) = val.trim().parse::<f32>() {
-                    return Some(u);
+        if Path::new(&path).exists()
+            && let Ok(val) = fs::read_to_string(path)
+            && let Ok(u) = val.trim().parse::<f32>()
+        {
+            return Some(u);
         }
     }
     None
 }
 
 fn get_nvidia_gpu_usage() -> Option<f32> {
-    let nvml = NVML_INSTANCE.get_or_init(|| {
-        Nvml::init().ok()
-    });
+    let nvml = NVML_INSTANCE.get_or_init(|| Nvml::init().ok());
     let nvml_ref = nvml.as_ref()?;
     let device = nvml_ref.device_by_index(0).ok()?;
     let utilization = device.utilization_rates().ok()?;
     Some(utilization.gpu as f32)
-
 }

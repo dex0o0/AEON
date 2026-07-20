@@ -1,7 +1,7 @@
 #[macro_use]
 mod macros;
 
-use aeon::modules::monitoring::{self, scan_processes, Icpu, Idisks, ProcessWatcher, Systate};
+use aeon::modules::monitoring::{self, Icpu, Idisks, ProcessWatcher, Systate, scan_processes};
 use mimalloc::MiMalloc;
 mod cli;
 use aeon::modules::scan_sys::Sysinfo;
