@@ -252,12 +252,12 @@ pub fn check_mem(state: &mut Systate) {
 ///
 /// you can use this function to other file
 ///```
-/// check_net("<ip address>").await;
+// check_net("<ip address>").await;
 ///```
 /// <h2>for example</h2>
 ///
 /// ```
-/// check_net("8.8.8.8").await;
+// check_net("8.8.8.8").await;
 /// ```
 #[cfg(unix)]
 pub async fn check_net(ip: &str) -> io::Result<()> {
